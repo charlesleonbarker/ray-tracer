@@ -21,7 +21,7 @@ fn main(){
     for j in 0..image_height{
         for i in 0..image_width{
             let r = i as f64/(image_width as f64 - 1.0);
-            let g =  j as f64/(image_height as f64 - 1.0);
+            let g =  (image_height - j) as f64/(image_height as f64 - 1.0);
             let b = 0.25;
 
             let ir:i64 = (255.999*r) as i64;
