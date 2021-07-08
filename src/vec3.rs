@@ -1,5 +1,4 @@
 use std::ops;
-use num::pow;
 #[derive (PartialEq, Debug, Copy, Clone)]
 pub struct vec3{
     x: f64,
@@ -16,11 +15,11 @@ impl vec3{
     }
 
     pub fn length(self) -> f64{
-        num::pow(self.length_squared(), 1/2)
+        self.length_squared().sqrt()
     }
 
     pub fn length_squared(self) -> f64{
-        num::pow(self.x, 2) + pow(self.y, 2) + pow(self.z, 2)
+        self.x.powi(2) + self.y.powi(2) + self.z.powi(2)
     }
 
     fn mul(self, rhs: f64) -> vec3 {
@@ -32,6 +31,10 @@ impl vec3{
     }
     pub fn dot(lhs:vec3, rhs:vec3) -> f64{
         lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z
+    }
+
+    pub fn unit_vector(self) -> vec3{
+        self.div(self.length())
     }
 
 }
@@ -103,8 +106,8 @@ mod tests {
 
     #[test]
     fn test_length(){
-        let lhs = vec3::new(1.0,2.0,3.0);
-        let result = pow(14.0, 1/2);
+        let lhs = vec3::new(4.0,3.0,0.0);
+        let result = 5.0;
         assert_eq!(lhs.length(), result);
     }
 
@@ -113,6 +116,13 @@ mod tests {
         let lhs = vec3::new(1.0,2.0,3.0);
         let result = 14.0;
         assert_eq!(lhs.length_squared(), result);
+    }
+
+    #[test]
+    fn test_unit_vector(){
+        let vec = vec3::new(2.0,0.0,0.0);
+        let result = vec3::new(1.0,0.0,0.0);
+        assert_eq!(vec.unit_vector(), result);
     }
 
 }
