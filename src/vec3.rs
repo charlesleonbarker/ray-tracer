@@ -22,36 +22,95 @@ impl vec3{
         self.x.powi(2) + self.y.powi(2) + self.z.powi(2)
     }
 
-    fn mul(self, rhs: f64) -> vec3 {
-        vec3::new(self.x*rhs, self.y*rhs, self.z*rhs)
-    }
-
-    fn div(self, rhs: f64) -> vec3{
-        vec3::new(self.x/rhs, self.y/rhs, self.z/rhs)
-    }
     pub fn dot(lhs:vec3, rhs:vec3) -> f64{
         lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z
     }
 
     pub fn unit_vector(self) -> vec3{
-        self.div(self.length())
+        self/(self.length())
     }
 
 }
 
-impl ops::Add for vec3 {
+impl<T> ops::Add<T> for vec3 where T:Vec3_Add {
     type Output = vec3;
-    fn add(self, rhs: vec3) -> vec3 {
-        vec3::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+    fn add(self, rhs: T) -> vec3 {
+        rhs.vec3_add(self)
     }
 }
 
-impl ops::Sub for vec3 {
+impl<T> ops::Sub<T> for vec3 where T:Vec3_Sub {
     type Output = vec3;
-    fn sub(self, rhs: vec3) -> vec3 {
-        vec3::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+    fn sub(self, rhs: T) -> vec3 {
+        rhs.vec3_sub(self)
     }
 }
+
+impl<T> ops::Mul<T> for vec3 where T:Vec3_Mul {
+    type Output = vec3;
+    fn mul(self, rhs: T) -> vec3 {
+        rhs.vec3_mul(self)
+    }
+}
+
+impl<T> ops::Div<T> for vec3 where T:Vec3_Div {
+    type Output = vec3;
+    fn div(self, rhs: T) -> vec3 {
+        rhs.vec3_div(self)
+    }
+}
+pub trait Vec3_Add{
+    fn vec3_add(self, vec: vec3) -> vec3;
+}
+
+pub trait Vec3_Sub{
+    fn vec3_sub(self, vec: vec3) -> vec3;
+}
+
+pub trait Vec3_Mul{
+    fn vec3_mul(self, vec: vec3) -> vec3;
+}
+
+pub trait Vec3_Div{
+    fn vec3_div(self, vec: vec3) -> vec3;
+}
+
+impl Vec3_Add for f64{
+    fn vec3_add(self, vec:vec3) -> vec3{
+        vec3::new(vec.x + self, vec.y + self, vec.z + self)
+    }
+}
+
+impl Vec3_Sub for f64{
+    fn vec3_sub(self, vec:vec3) -> vec3{
+        vec3::new(vec.x - self, vec.y - self, vec.z - self)
+    }
+}
+
+impl Vec3_Mul for f64{
+    fn vec3_mul(self, vec:vec3) -> vec3{
+        vec3::new(vec.x*self, vec.y*self, vec.z*self)
+    }
+}
+
+impl Vec3_Div for f64{
+    fn vec3_div(self, vec:vec3) -> vec3{
+        vec3::new(vec.x/self, vec.y/self, vec.z/self)
+    }
+}
+
+impl Vec3_Add for vec3{
+    fn vec3_add(self, other:vec3) -> vec3{
+        vec3::new(other.x + self.x, other.y + self.y, other.z + self.z)
+    }
+}
+
+impl Vec3_Sub for vec3{
+    fn vec3_sub(self, other:vec3) -> vec3{
+        vec3::new(other.x - self.x, other.y - self.y, other.z - self.z)
+    }
+}
+
 
 
 #[cfg(test)]
@@ -85,7 +144,7 @@ mod tests {
         let lhs = vec3::new(1.0,2.0,3.0);
         let rhs = 5.0;
         let result = vec3::new(5.0,10.0,15.0);
-        assert_eq!(lhs.mul(rhs), result);
+        assert_eq!(lhs * rhs, result);
     }
 
     #[test]
@@ -93,7 +152,7 @@ mod tests {
         let lhs = vec3::new(1.0,2.0,3.0);
         let rhs = 5.0;
         let result = vec3::new(5.0,10.0,15.0);
-        assert_eq!(lhs.mul(rhs), result);
+        assert_eq!(lhs * rhs, result);
     }
 
     #[test]
