@@ -151,8 +151,8 @@ mod tests {
     fn test_div(){
         let lhs = vec3::new(1.0,2.0,3.0);
         let rhs = 5.0;
-        let result = vec3::new(5.0,10.0,15.0);
-        assert_eq!(lhs * rhs, result);
+        let result = vec3::new(0.2,0.4,0.6);
+        assert_eq!(lhs / rhs, result);
     }
 
     #[test]
