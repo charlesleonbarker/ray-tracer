@@ -110,16 +110,23 @@ mod tests {
     }
 
     #[test]
-    fn test_add(){
+    fn test_vec_add(){
         let lhs = vec3::new(1.0,2.0,3.0);
-        // let rhs = vec3::new(4.0,2.0,-1.0);
+        let rhs = vec3::new(4.0,2.0,-1.0);
+        let result = vec3::new(5.0,4.0,2.0);
+        assert_eq!(lhs + rhs, result);
+    }
+
+    #[test]
+    fn test_scalar_add(){
+        let lhs = vec3::new(1.0,2.0,3.0);
         let rhs = 2.0;
         let result = vec3::new(3.0,4.0,5.0);
         assert_eq!(lhs + rhs, result);
     }
 
     #[test]
-    fn test_sub(){
+    fn test_vec_sub(){
         let lhs = vec3::new(1.0,2.0,3.0);
         let rhs = vec3::new(4.0,2.0,-1.0);
         let result = vec3::new(-3.0,0.0,4.0);
@@ -127,7 +134,15 @@ mod tests {
     }
 
     #[test]
-    fn test_mul(){
+    fn test_scalar_sub(){
+        let lhs = vec3::new(1.0,2.0,3.0);
+        let rhs = 2.0;
+        let result = vec3::new(-1.0,0.0,1.0);
+        assert_eq!(lhs - rhs, result);
+    }
+
+    #[test]
+    fn test_scalar_mul(){
         let lhs = vec3::new(1.0,2.0,3.0);
         let rhs = 5.0;
         let result = vec3::new(5.0,10.0,15.0);
@@ -135,7 +150,7 @@ mod tests {
     }
 
     #[test]
-    fn test_div(){
+    fn test_scalar_div(){
         let lhs = vec3::new(1.0,2.0,3.0);
         let rhs = 5.0;
         let result = vec3::new(0.2,0.4,0.6);
