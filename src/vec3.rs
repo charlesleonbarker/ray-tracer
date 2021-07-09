@@ -32,84 +32,70 @@ impl vec3{
 
 }
 
-impl<T> ops::Add<T> for vec3 where T:Vec3_Add {
+
+impl ops::Add<f64> for vec3{
     type Output = vec3;
-    fn add(self, rhs: T) -> vec3 {
-        rhs.vec3_add(self)
+    fn add(self, rhs: f64) -> vec3 {
+        vec3::new(self.x + rhs, self. y + rhs, self.z + rhs)
     }
 }
 
-impl<T> ops::Sub<T> for vec3 where T:Vec3_Sub {
+impl ops::Add<vec3> for f64{
     type Output = vec3;
-    fn sub(self, rhs: T) -> vec3 {
-        rhs.vec3_sub(self)
+    fn add(self, rhs: vec3) -> vec3 {
+        vec3::new(rhs.x + self, rhs.y + self, rhs.z + self)
     }
 }
 
-impl<T> ops::Mul<T> for vec3 where T:Vec3_Mul {
+impl ops::Add<vec3> for vec3{
     type Output = vec3;
-    fn mul(self, rhs: T) -> vec3 {
-        rhs.vec3_mul(self)
+    fn add(self, rhs: vec3) -> vec3 {
+        vec3::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
     }
 }
 
-impl<T> ops::Div<T> for vec3 where T:Vec3_Div {
+impl ops::Sub<f64> for vec3{
     type Output = vec3;
-    fn div(self, rhs: T) -> vec3 {
-        rhs.vec3_div(self)
-    }
-}
-pub trait Vec3_Add{
-    fn vec3_add(self, vec: vec3) -> vec3;
-}
-
-pub trait Vec3_Sub{
-    fn vec3_sub(self, vec: vec3) -> vec3;
-}
-
-pub trait Vec3_Mul{
-    fn vec3_mul(self, vec: vec3) -> vec3;
-}
-
-pub trait Vec3_Div{
-    fn vec3_div(self, vec: vec3) -> vec3;
-}
-
-impl Vec3_Add for f64{
-    fn vec3_add(self, vec:vec3) -> vec3{
-        vec3::new(vec.x + self, vec.y + self, vec.z + self)
+    fn sub(self, rhs: f64) -> vec3 {
+        vec3::new(self.x - rhs, self. y - rhs, self.z - rhs)
     }
 }
 
-impl Vec3_Sub for f64{
-    fn vec3_sub(self, vec:vec3) -> vec3{
-        vec3::new(vec.x - self, vec.y - self, vec.z - self)
+impl ops::Sub<vec3> for f64{
+    type Output = vec3;
+    fn sub(self, rhs: vec3) -> vec3 {
+        vec3::new(rhs.x - self, rhs.y - self, rhs.z - self)
     }
 }
 
-impl Vec3_Mul for f64{
-    fn vec3_mul(self, vec:vec3) -> vec3{
-        vec3::new(vec.x*self, vec.y*self, vec.z*self)
+impl ops::Sub<vec3> for vec3{
+    type Output = vec3;
+    fn sub(self, rhs: vec3) -> vec3 {
+        vec3::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
     }
 }
 
-impl Vec3_Div for f64{
-    fn vec3_div(self, vec:vec3) -> vec3{
-        vec3::new(vec.x/self, vec.y/self, vec.z/self)
+impl ops::Mul<f64> for vec3{
+    type Output = vec3;
+    fn mul(self, rhs: f64) -> vec3 {
+        vec3::new(self.x * rhs, self. y * rhs, self.z * rhs)
     }
 }
 
-impl Vec3_Add for vec3{
-    fn vec3_add(self, other:vec3) -> vec3{
-        vec3::new(other.x + self.x, other.y + self.y, other.z + self.z)
+impl ops::Mul<vec3> for f64{
+    type Output = vec3;
+    fn mul(self, rhs: vec3) -> vec3 {
+        vec3::new(rhs.x * self, rhs.y * self, rhs.z * self)
     }
 }
 
-impl Vec3_Sub for vec3{
-    fn vec3_sub(self, other:vec3) -> vec3{
-        vec3::new(other.x - self.x, other.y - self.y, other.z - self.z)
+impl ops::Div<f64> for vec3{
+    type Output = vec3;
+    fn div(self, rhs: f64) -> vec3 {
+        vec3::new(self.x / rhs, self. y / rhs, self.z / rhs)
     }
 }
+
 
 
 
@@ -126,8 +112,9 @@ mod tests {
     #[test]
     fn test_add(){
         let lhs = vec3::new(1.0,2.0,3.0);
-        let rhs = vec3::new(4.0,2.0,-1.0);
-        let result = vec3::new(5.0,4.0,2.0);
+        // let rhs = vec3::new(4.0,2.0,-1.0);
+        let rhs = 2.0;
+        let result = vec3::new(3.0,4.0,5.0);
         assert_eq!(lhs + rhs, result);
     }
 
