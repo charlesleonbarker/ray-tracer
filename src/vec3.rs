@@ -102,6 +102,13 @@ impl ops::Div<f64> for vec3{
     }
 }
 
+impl ops::Neg for vec3{
+    type Output = vec3;
+    fn neg(self) -> vec3{
+        vec3::new(-self.x, -self.y, -self.z)
+    }
+}
+
 
 
 
@@ -198,6 +205,13 @@ mod tests {
         let rhs = vec3::new(4.0,9.0,2.0);
         let result = vec3::new(-15.0, -2.0, 39.0);
         assert_eq!(vec3::cross(lhs, rhs), result);
-
     }
+
+    #[test]
+    fn test_neg(){
+        let vec = vec3::new(3.0,-3.0,1.0);
+        let result = vec3::new(-3.0, 3.0, -1.0);
+        assert_eq!(-vec, result);
+    }
+
 }
