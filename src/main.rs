@@ -2,6 +2,7 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::{Error, Write};
 mod vec;
+use crate::vec::*;
 mod ray;
 fn main(){
 
@@ -26,7 +27,7 @@ fn main(){
         }
         // Write to Image
         for i in 0..image_width{
-            let pixel_color = vec::color::new(i as f64/(image_width as f64 - 1.0),
+            let pixel_color = color::new(i as f64/(image_width as f64 - 1.0),
                                                     (image_height - j) as f64/(image_height as f64 - 1.0),
                                                     0.25);
             pixel_color.write_color(&mut file);
