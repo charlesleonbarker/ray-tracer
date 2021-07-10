@@ -30,6 +30,12 @@ impl vec3{
         self/(self.length())
     }
 
+    pub fn cross(lhs: vec3, rhs: vec3) -> vec3{
+        vec3::new(lhs.y*rhs.z - lhs.z*rhs.y, 
+                  lhs.z*rhs.x - lhs.x*rhs.z,
+                  lhs.x*rhs.y - lhs.y*rhs.x)
+    }
+
 }
 
 
@@ -186,4 +192,12 @@ mod tests {
         assert_eq!(vec.unit_vector(), result);
     }
 
+    #[test]
+    fn test_cross(){
+        let lhs = vec3::new(3.0,-3.0,1.0);
+        let rhs = vec3::new(4.0,9.0,2.0);
+        let result = vec3::new(-15.0, -2.0, 39.0);
+        assert_eq!(vec3::cross(lhs, rhs), result);
+
+    }
 }
