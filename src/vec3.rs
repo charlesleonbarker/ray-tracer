@@ -1,4 +1,4 @@
-use std::ops;
+use std::{fs::File, ops};
 #[derive (PartialEq, Debug, Copy, Clone)]
 pub struct vec3{
     x: f64,
@@ -6,8 +6,8 @@ pub struct vec3{
     z: f64,
 }
 
-type point3 = vec3;
-type color = vec3;
+pub type point3 = vec3;
+pub type color = vec3;
 
 impl vec3{
     pub fn new(x: f64, y: f64, z:f64) -> vec3{
@@ -109,7 +109,16 @@ impl ops::Neg for vec3{
     }
 }
 
+impl color{
 
+    pub fn write_color<T: std::io::Write>(self, writer: &mut T)
+    {
+        let ir = (255.999*self.x) as i64;
+        let ig = (255.999*self.y) as i64;
+        let ib = (255.999*self.z) as i64;
+        write!(writer, "{} {} {}\n", ir, ig, ib);
+    }
+}
 
 
 #[cfg(test)]
