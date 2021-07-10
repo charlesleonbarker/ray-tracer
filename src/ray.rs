@@ -9,11 +9,11 @@ impl Ray{
         Ray{orig: origin, dir: direction}
     }
 
-    pub fn origin(&self) -> Point3{
+    pub fn origin(self) -> Point3{
         self.orig
     }
 
-    pub fn direction(&self) -> Vec3{
+    pub fn direction(self) -> Vec3{
         self.dir
     }
 
