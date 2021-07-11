@@ -14,6 +14,18 @@ impl Vec3{
         Vec3{x,y,z}
     }
 
+    pub fn x(&self) -> f64{
+        self.x
+    }
+
+    pub fn y(&self) -> f64{
+        self.y
+    }
+
+    pub fn z(&self) -> f64{
+        self.z
+    }
+
     pub fn length(self) -> f64{
         self.length_squared().sqrt()
     }
@@ -129,6 +141,24 @@ mod tests {
     fn test_new(){
         let result = Vec3{x: 1.0, y: 2.0, z: 3.0};
         assert_eq!(Vec3::new(1.0,2.0,3.0), result);
+    }
+
+    #[test]
+    fn test_x(){
+        let vec = Vec3{x: 1.0, y: 2.0, z: 3.0};
+        assert_eq!(vec.x, 1.0);
+    }
+
+    #[test]
+    fn test_y(){
+        let vec = Vec3{x: 1.0, y: 2.0, z: 3.0};
+        assert_eq!(vec.y, 2.0);
+    }
+
+    #[test]
+    fn test_z(){
+        let vec = Vec3{x: 1.0, y: 2.0, z: 3.0};
+        assert_eq!(vec.z, 3.0);
     }
 
     #[test]
