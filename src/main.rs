@@ -1,3 +1,5 @@
+#[macro_use] extern crate impl_ops;
+
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::{Error, Write};

@@ -1,4 +1,5 @@
 use std::{fs::File, ops};
+
 #[derive (PartialEq, Debug, Copy, Clone)]
 pub struct Vec3{
     x: f64,
@@ -50,71 +51,25 @@ impl Vec3{
 
 }
 
+//Operator overloading using impl_ops
+impl_op_ex_commutative!(+ |lhs: &f64, rhs: &Vec3| -> Vec3 { Vec3::new(rhs.x + lhs, rhs.y + lhs, rhs.z + lhs)});
+impl_op_ex!(+ |lhs: &Vec3, rhs: &Vec3| -> Vec3 { Vec3::new(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z)});
 
-impl ops::Add<f64> for Vec3{
-    type Output = Vec3;
-    fn add(self, rhs: f64) -> Vec3 {
-        Vec3::new(self.x + rhs, self. y + rhs, self.z + rhs)
-    }
-}
+impl_op_ex!(- |lhs: &f64, rhs: &Vec3| -> Vec3 { Vec3::new(lhs - rhs.x, lhs - rhs.y, lhs - rhs.z)});
+impl_op_ex!(- |lhs: &Vec3, rhs: &f64| -> Vec3 { Vec3::new(lhs.x - rhs, lhs.y - rhs, lhs.z - rhs)});
+impl_op_ex!(- |lhs: &Vec3, rhs: &Vec3| -> Vec3 { Vec3::new(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z)});
 
-impl ops::Add<Vec3> for f64{
-    type Output = Vec3;
-    fn add(self, rhs: Vec3) -> Vec3 {
-        Vec3::new(rhs.x + self, rhs.y + self, rhs.z + self)
-    }
-}
-
-impl ops::Add<Vec3> for Vec3{
-    type Output = Vec3;
-    fn add(self, rhs: Vec3) -> Vec3 {
-        Vec3::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
-    }
-}
-
-impl ops::Sub<f64> for Vec3{
-    type Output = Vec3;
-    fn sub(self, rhs: f64) -> Vec3 {
-        Vec3::new(self.x - rhs, self. y - rhs, self.z - rhs)
-    }
-}
-
-impl ops::Sub<Vec3> for f64{
-    type Output = Vec3;
-    fn sub(self, rhs: Vec3) -> Vec3 {
-        Vec3::new(rhs.x - self, rhs.y - self, rhs.z - self)
-    }
-}
-
-impl ops::Sub<Vec3> for Vec3{
-    type Output = Vec3;
-    fn sub(self, rhs: Vec3) -> Vec3 {
-        Vec3::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
-    }
-}
-
-impl ops::Mul<f64> for Vec3{
-    type Output = Vec3;
-    fn mul(self, rhs: f64) -> Vec3 {
-        Vec3::new(self.x * rhs, self. y * rhs, self.z * rhs)
-    }
-}
-
-impl ops::Mul<Vec3> for f64{
-    type Output = Vec3;
-    fn mul(self, rhs: Vec3) -> Vec3 {
-        Vec3::new(rhs.x * self, rhs.y * self, rhs.z * self)
-    }
-}
-
-impl ops::Div<f64> for Vec3{
-    type Output = Vec3;
-    fn div(self, rhs: f64) -> Vec3 {
-        Vec3::new(self.x / rhs, self. y / rhs, self.z / rhs)
-    }
-}
+impl_op_ex_commutative!(* |lhs: &f64, rhs: &Vec3| -> Vec3 { Vec3::new(rhs.x * lhs, rhs.y * lhs, rhs.z * lhs)});
+impl_op_ex!(/ |lhs: &Vec3, rhs: &f64| -> Vec3 { Vec3::new(lhs.x / rhs, lhs.y / rhs, lhs.z / rhs)});
 
 impl ops::Neg for Vec3{
+    type Output = Vec3;
+    fn neg(self) -> Vec3{
+        Vec3::new(-self.x, -self.y, -self.z)
+    }
+}
+
+impl ops::Neg for &Vec3{
     type Output = Vec3;
     fn neg(self) -> Vec3{
         Vec3::new(-self.x, -self.y, -self.z)
