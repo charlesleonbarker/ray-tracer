@@ -27,23 +27,23 @@ impl Vec3{
         self.z
     }
 
-    pub fn length(self) -> f64{
+    pub fn length(&self) -> f64{
         self.length_squared().sqrt()
     }
 
-    pub fn length_squared(self) -> f64{
+    pub fn length_squared(&self) -> f64{
         self.x.powi(2) + self.y.powi(2) + self.z.powi(2)
     }
 
-    pub fn dot(lhs:Vec3, rhs:Vec3) -> f64{
+    pub fn dot(lhs:&Vec3, rhs:&Vec3) -> f64{
         lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z
     }
 
-    pub fn unit_vector(self) -> Vec3{
+    pub fn unit_vector(&self) -> Vec3{
         self/(self.length())
     }
 
-    pub fn cross(lhs: Vec3, rhs: Vec3) -> Vec3{
+    pub fn cross(lhs: &Vec3, rhs: &Vec3) -> Vec3{
         Vec3::new(lhs.y*rhs.z - lhs.z*rhs.y, 
                   lhs.z*rhs.x - lhs.x*rhs.z,
                   lhs.x*rhs.y - lhs.y*rhs.x)
@@ -169,7 +169,7 @@ mod tests {
         let lhs = Vec3::new(1.0,2.0,3.0);
         let rhs = Vec3::new(4.0,2.0,-1.0);
         let result = 5.0;
-        assert_eq!(Vec3::dot(lhs,rhs), result);
+        assert_eq!(Vec3::dot(&lhs,&rhs), result);
     }
 
     #[test]
@@ -198,7 +198,7 @@ mod tests {
         let lhs = Vec3::new(3.0,-3.0,1.0);
         let rhs = Vec3::new(4.0,9.0,2.0);
         let result = Vec3::new(-15.0, -2.0, 39.0);
-        assert_eq!(Vec3::cross(lhs, rhs), result);
+        assert_eq!(Vec3::cross(&lhs, &rhs), result);
     }
 
     #[test]
