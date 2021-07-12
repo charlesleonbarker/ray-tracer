@@ -8,10 +8,27 @@ use crate::vec::*;
 mod ray;
 use crate::ray::*;
 
-pub fn ray_color(r: Ray) -> Color{
-    let unit_dir = r.direction().unit_vector();
-    let t = 0.5*(unit_dir.y() + 1.0);
-    (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
+pub fn ray_color(r: &Ray) -> Color{
+    if hit_sphere(&Point3::new(0.0, 0.0, -1.0), 0.5, r){
+        Color::new(1.0, 0.0, 0.0)
+    }else {
+        let unit_dir = r.direction().unit_vector();
+        let t = 0.5*(unit_dir.y() + 1.0);
+        (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
+    }
+}
+
+pub fn hit_sphere(center: &Point3, radius: f64, r: &Ray) -> bool{
+    let oc = &r.origin() - center;
+    let a = r.direction().length_squared();
+    let b = 2.0*Vec3::dot(&oc, &r.direction());
+    let c = Vec3::dot(&oc, &oc) - radius*radius;
+    let discriminant = b*b - 4.0*a*c;
+    if discriminant > 0.0{
+        true
+    } else{
+        false
+    }
 }
 
 fn main(){
@@ -52,7 +69,7 @@ fn main(){
             let u = i as f64/(image_width as f64 - 1.0);
             let v = ((image_height - j) as f64)/((image_height - 1) as f64);
             let r = Ray::new(origin, lower_left_corner + u*horizontal + v*vertical - origin);
-            let pixel_color = ray_color(r);
+            let pixel_color = ray_color(&r);
             pixel_color.write_color(&mut file);
         }
     }
