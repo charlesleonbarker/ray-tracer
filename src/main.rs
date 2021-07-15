@@ -7,29 +7,25 @@ mod vec;
 use crate::vec::*;
 mod ray;
 use crate::ray::*;
+mod sphere;
+use crate::sphere::*;
+mod hittable;
+use crate::hittable::*;
+use std::f64::INFINITY as infinity;
+use std::f64::consts::PI as pi;
 
-pub fn ray_color(r: &Ray) -> Color{
-    let t = hit_sphere(&Point3::new(0.0, 0.0, -1.0), 0.5, r);
-    if t > 0.0{
-        let n = (r.at(t) - Vec3::new(0.0, 0.0, -1.0)).unit_vector();
-        0.5*Color::new(n.x()+1.0, n.y()+1.0,n.z()+1.0) 
+pub fn deg_to_rad(deg:f64) -> f64{
+    deg*180.0/pi
+}
+
+pub fn ray_color(r: &Ray, world: &mut HittablesList) -> Color {
+    let mut rec = HitRecord::default();
+    if world.hit(r, 0.0, infinity, &mut rec){
+        0.5*(rec.normal + Color::new(1.0, 1.0, 1.0))
     }else {
         let unit_dir = r.direction().unit_vector();
         let t = 0.5*(unit_dir.y() + 1.0);
         (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
-    }
-}
-
-pub fn hit_sphere(center: &Point3, radius: f64, r: &Ray) -> f64{
-    let oc = &r.origin() - center;
-    let a = r.direction().length_squared();
-    let half_b = Vec3::dot(&oc, &r.direction());
-    let c = oc.length_squared() - radius*radius;
-    let discriminant = half_b*half_b - a*c;
-    if discriminant < 0.0{
-        -1.0
-    } else{
-    (-half_b-discriminant.sqrt())/a
     }
 }
 
@@ -39,6 +35,13 @@ fn main(){
     const aspect_ratio: f64 = 16.0/9.0;
     const image_width:i32 = 256;
     const image_height:i32 = ((image_width as f64)/aspect_ratio) as i32;
+
+    //World
+    let mut world = HittablesList::new();
+    let s1 = Sphere::new(&Point3::new(0.0,0.0,-1.0), 0.5);
+    let ground = Sphere::new(&Point3::new(0.0,-100.5,-1.0), 100.0);
+    world.add(&s1);
+    world.add(&ground);
 
     //Camera
     let viewport_height = 2.0;
@@ -71,7 +74,7 @@ fn main(){
             let u = i as f64/(image_width as f64 - 1.0);
             let v = ((image_height - j) as f64)/((image_height - 1) as f64);
             let r = Ray::new(origin, lower_left_corner + u*horizontal + v*vertical - origin);
-            let pixel_color = ray_color(&r);
+            let pixel_color = ray_color(&r, &mut world);
             pixel_color.write_color(&mut file);
         }
     }
