@@ -22,12 +22,9 @@ pub fn deg_to_rad(deg:f64) -> f64{
     deg*pi/180.0
 }
 
-pub fn rand_double() -> f64{
-    rand::random()
-}
-
-pub fn rand_double_in(min: f64, max: f64) -> f64{
-    rand::random::<f64>()*(max - min) + min
+//Generates random numbers between [min_inc, max_exc)
+pub fn rand_double(min_inc: f64, max_exc: f64) -> f64{
+    rand::random::<f64>()*(max_exc - min_inc) + min_inc
 }
 
 pub fn bound(x: f64, min: f64, max:f64) -> f64{
@@ -84,8 +81,8 @@ fn main(){
         for i in 0..IMAGE_WIDTH{
             let mut pixel_color = Color::new(0.0,0.0,0.0);
             for _ in 0..SAMPLES_PER_PIXEL{
-                let u = (rand_double() + i as f64)/(IMAGE_WIDTH as f64 - 1.0);
-                let v = (rand_double() + (IMAGE_HEIGHT - j) as f64)/((IMAGE_HEIGHT - 1) as f64);
+                let u = (rand_double(0.0, 1.0) + i as f64)/(IMAGE_WIDTH as f64 - 1.0);
+                let v = (rand_double(0.0, 1.0) + (IMAGE_HEIGHT - j) as f64)/((IMAGE_HEIGHT - 1) as f64);
                 let r = cam.get_ray(u,v);
                 pixel_color = pixel_color + ray_color(&r, &mut world);
             }
