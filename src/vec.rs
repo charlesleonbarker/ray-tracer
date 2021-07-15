@@ -1,6 +1,7 @@
 use std::{fs::File, ops};
+use crate::*;
 
-#[derive (PartialEq, Debug, Copy, Clone)]
+#[derive (PartialEq, Debug, Copy, Clone, Default)]
 pub struct Vec3{
     x: f64,
     y: f64,
@@ -78,11 +79,22 @@ impl ops::Neg for &Vec3{
 
 impl Color{
 
-    pub fn write_color<T: std::io::Write>(self, writer: &mut T)
+    pub fn write_color<T: std::io::Write>(self, writer: &mut T, samples: i32)
     {
-        let ir = (255.999*self.x) as i64;
-        let ig = (255.999*self.y) as i64;
-        let ib = (255.999*self.z) as i64;
+
+        let mut r = self.x();
+        let mut g = self.y();
+        let mut b = self.z();
+
+        let scale = 1.0/(samples as f64);
+        r *= scale;
+        g *= scale;
+        b *= scale;
+        
+
+        let ir = (256.0*bound(r, 0.0, 0.999)) as i64;
+        let ig = (256.0*bound(g, 0.0, 0.999)) as i64;
+        let ib = (256.0*bound(b, 0.0, 0.999)) as i64;
         write!(writer, "{} {} {}\n", ir, ig, ib);
     }
 }

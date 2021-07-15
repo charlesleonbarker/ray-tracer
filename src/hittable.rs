@@ -1,6 +1,5 @@
 use crate::vec::*;
 use crate::ray::*;
-use crate::sphere::*;
 
 #[derive (Copy, Clone, Default)]
 pub struct HitRecord{

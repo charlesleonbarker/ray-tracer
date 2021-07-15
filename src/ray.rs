@@ -1,4 +1,5 @@
 use crate::vec::*;
+#[derive (Copy, Clone, Default)]
 pub struct Ray{
     orig: Point3,
     dir: Vec3,
@@ -51,6 +52,8 @@ mod tests {
         assert_eq!(ray.origin(), orig);
     }
 
+    
+    #[test]
     fn test_at(){
         let orig = Vec3::new(0.0, 0.0, 0.0);
         let dir = Vec3::new(1.0, 2.0, 3.0);
@@ -58,6 +61,4 @@ mod tests {
         let t = 2.0;
         assert_eq!(ray.at(t), orig+2.0*dir);
     }
-
-
 }

@@ -15,9 +15,11 @@ mod hittable;
 use crate::hittable::*;
 use std::f64::INFINITY as infinity;
 use std::f64::consts::PI as pi;
+mod camera;
+use crate::camera::*;
 
 pub fn deg_to_rad(deg:f64) -> f64{
-    deg*180.0/pi
+    deg*pi/180.0
 }
 
 pub fn rand_double() -> f64{
@@ -26,6 +28,12 @@ pub fn rand_double() -> f64{
 
 pub fn rand_double_in(min: f64, max: f64) -> f64{
     rand::random::<f64>()*(max - min) + min
+}
+
+pub fn bound(x: f64, min: f64, max:f64) -> f64{
+    if x < min{return min}
+    if x > max{return max}
+    x
 }
 
 pub fn ray_color(r: &Ray, world: &mut HittablesList) -> Color {
@@ -42,9 +50,9 @@ pub fn ray_color(r: &Ray, world: &mut HittablesList) -> Color {
 fn main(){
 
     //Image
-    const aspect_ratio: f64 = 16.0/9.0;
-    const image_width:i32 = 256;
-    const image_height:i32 = ((image_width as f64)/aspect_ratio) as i32;
+    const IMAGE_WIDTH:i32 = 400;
+    const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
+    const SAMPLES_PER_PIXEL: i32 = 10;
 
     //World
     let mut world = HittablesList::new();
@@ -54,14 +62,7 @@ fn main(){
     world.add(&ground);
 
     //Camera
-    let viewport_height = 2.0;
-    let viewport_width = aspect_ratio*viewport_height;
-    let focal_length = 1.0;
-
-    let origin = Point3::new(0.0, 0.0,0.0 );
-    let horizontal = Vec3::new(viewport_width, 0.0, 0.0);
-    let vertical = Vec3::new(0.0, viewport_height, 0.0);
-    let lower_left_corner = origin - horizontal/2.0 - vertical/2.0 - Vec3::new(0.0, 0.0, focal_length);
+    let cam = Camera::new();
 
     //Render
     let path = "results.ppm";
@@ -71,21 +72,46 @@ fn main(){
                                     .open(path)
                                     .unwrap();
 
-    write!(file, "P3\n{} {} \n255\n", image_width, image_height);
+    write!(file, "P3\n{} {} \n255\n", IMAGE_WIDTH, IMAGE_HEIGHT);
     let mut perc:i32 = 0;
-
-    for j in 0..image_height{
+    println!("{}",IMAGE_WIDTH*IMAGE_HEIGHT);
+    for j in 0..IMAGE_HEIGHT{
         // Loading Bar Output
-        if perc != ((j as f64)/(image_height as f64)*100.0) as i32 {
-            perc = ((j as f64)/(image_height as f64)*100.0) as i32;
-            println!("{}", ((j as f64)/(image_height as f64)*100.0) as i32);
+        if perc != ((j as f64)/(IMAGE_HEIGHT as f64)*100.0) as i32 {
+            perc = ((j as f64)/(IMAGE_HEIGHT as f64)*100.0) as i32;
+            println!("{}", ((j as f64)/(IMAGE_HEIGHT as f64)*100.0) as i32);
         }
-        for i in 0..image_width{
-            let u = i as f64/(image_width as f64 - 1.0);
-            let v = ((image_height - j) as f64)/((image_height - 1) as f64);
-            let r = Ray::new(origin, lower_left_corner + u*horizontal + v*vertical - origin);
-            let pixel_color = ray_color(&r, &mut world);
-            pixel_color.write_color(&mut file);
+        for i in 0..IMAGE_WIDTH{
+            let mut pixel_color = Color::new(0.0,0.0,0.0);
+            for _ in 0..SAMPLES_PER_PIXEL{
+                let u = (rand_double() + i as f64)/(IMAGE_WIDTH as f64 - 1.0);
+                let v = (rand_double() + (IMAGE_HEIGHT - j) as f64)/((IMAGE_HEIGHT - 1) as f64);
+                let r = cam.get_ray(u,v);
+                pixel_color = pixel_color + ray_color(&r, &mut world);
+            }
+            pixel_color.write_color(&mut file, SAMPLES_PER_PIXEL);
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bound(){
+        let x = 10.0;
+        let max_x = bound(x, 5.0, 7.0);
+        let min_x = bound(x, 11.0, 14.0);
+        assert_eq!(max_x, 7.0);
+        assert_eq!(min_x, 11.0);
+    }
+
+    #[test]
+    fn test_deg_2_rad(){
+        let deg = 180.0;
+        let rad = deg_to_rad(deg);
+        assert_eq!(pi, rad);
+    }
+
 }
