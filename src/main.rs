@@ -1,4 +1,6 @@
-#[macro_use] extern crate impl_ops;
+#[macro_use] 
+extern crate impl_ops;
+extern crate rand;
 
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -16,6 +18,14 @@ use std::f64::consts::PI as pi;
 
 pub fn deg_to_rad(deg:f64) -> f64{
     deg*180.0/pi
+}
+
+pub fn rand_double() -> f64{
+    rand::random()
+}
+
+pub fn rand_double_in(min: f64, max: f64) -> f64{
+    rand::random::<f64>()*(max - min) + min
 }
 
 pub fn ray_color(r: &Ray, world: &mut HittablesList) -> Color {
