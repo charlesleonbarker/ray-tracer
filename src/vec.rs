@@ -16,6 +16,19 @@ impl Vec3{
         Vec3{x,y,z}
     }
 
+    pub fn rand(min: f64, max:f64) -> Vec3{
+        Vec3{x:rand_double(min, max), y:rand_double(min, max), z:rand_double(min, max)}
+    }
+
+    pub fn rand_in_unit_sphere() -> Vec3{
+        loop{
+            let p = Vec3::rand(-1.0, 1.0);
+            if p.length_squared() < 1.0 {
+                break(p)
+            }
+        }
+    }
+
     pub fn x(&self) -> f64{
         self.x
     }
@@ -87,9 +100,9 @@ impl Color{
         let mut b = self.z();
 
         let scale = 1.0/(samples as f64);
-        r *= scale;
-        g *= scale;
-        b *= scale;
+        r = (scale*r).sqrt();
+        g = (scale*g).sqrt();
+        b = (scale*b).sqrt();
         
 
         let ir = (256.0*bound(r, 0.0, 0.999)) as i64;
@@ -220,4 +233,11 @@ mod tests {
         assert_eq!(-vec, result);
     }
 
+    #[test]
+    fn test_rand_unit_sphere(){
+        let vec_1 = Vec3::rand_in_unit_sphere();
+        assert!(vec_1.length() <= 1.0);
+        let vec_2 = Vec3::rand_in_unit_sphere();
+        assert!(vec_1 != vec_2);
+    }
 }

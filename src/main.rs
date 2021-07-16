@@ -33,14 +33,21 @@ pub fn bound(x: f64, min: f64, max:f64) -> f64{
     x
 }
 
-pub fn ray_color(r: &Ray, world: &mut HittablesList) -> Color {
+pub fn ray_color(r: &Ray, world: &mut HittablesList, depth: i32) -> Color {
     let mut rec = HitRecord::default();
-    if world.hit(r, 0.0, infinity, &mut rec){
-        0.5*(rec.normal + Color::new(1.0, 1.0, 1.0))
-    }else {
-        let unit_dir = r.direction().unit_vector();
-        let t = 0.5*(unit_dir.y() + 1.0);
-        (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
+
+    //If we've exceeded the ray bounce limit, no more light is gathered.
+    if depth <= 0{
+        Color::new(0.0,0.0,0.0)
+    }else{
+        if world.hit(r, 0.001, infinity, &mut rec){
+            let target = rec.p + rec.normal + Vec3::rand_in_unit_sphere();
+            return 0.5*ray_color(&Ray::new(rec.p, target-rec.p), world, depth-1);
+        }else {
+            let unit_dir = r.direction().unit_vector();
+            let t = 0.5*(unit_dir.y() + 1.0);
+            (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
+        }
     }
 }
 
@@ -49,7 +56,8 @@ fn main(){
     //Image
     const IMAGE_WIDTH:i32 = 400;
     const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 10;
+    const SAMPLES_PER_PIXEL: i32 = 100;
+    const MAX_DEPTH: i32 = 50;
 
     //World
     let mut world = HittablesList::new();
@@ -84,7 +92,7 @@ fn main(){
                 let u = (rand_double(0.0, 1.0) + i as f64)/(IMAGE_WIDTH as f64 - 1.0);
                 let v = (rand_double(0.0, 1.0) + (IMAGE_HEIGHT - j) as f64)/((IMAGE_HEIGHT - 1) as f64);
                 let r = cam.get_ray(u,v);
-                pixel_color = pixel_color + ray_color(&r, &mut world);
+                pixel_color = pixel_color + ray_color(&r, &mut world, MAX_DEPTH);
             }
             pixel_color.write_color(&mut file, SAMPLES_PER_PIXEL);
         }
