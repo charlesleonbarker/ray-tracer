@@ -1,4 +1,4 @@
-use std::{fs::File, ops};
+use std::ops;
 use crate::*;
 
 #[derive (PartialEq, Debug, Copy, Clone, Default)]
@@ -108,7 +108,7 @@ impl Color{
         let ir = (256.0*bound(r, 0.0, 0.999)) as i64;
         let ig = (256.0*bound(g, 0.0, 0.999)) as i64;
         let ib = (256.0*bound(b, 0.0, 0.999)) as i64;
-        write!(writer, "{} {} {}\n", ir, ig, ib);
+        writeln!(writer, "{} {} {}", ir, ig, ib).unwrap();
     }
 }
 

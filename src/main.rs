@@ -1,22 +1,24 @@
 #[macro_use] 
+
 extern crate impl_ops;
 extern crate rand;
 
-use std::fs::OpenOptions;
-use std::io::prelude::*;
-use std::io::{Error, Write};
 mod vec;
-use crate::vec::*;
 mod ray;
-use crate::ray::*;
 mod sphere;
-use crate::sphere::*;
 mod hittable;
+mod camera;
+
+use crate::vec::*;
+use crate::ray::*;
+use crate::sphere::*;
 use crate::hittable::*;
+use crate::camera::*;
+
 use std::f64::INFINITY as infinity;
 use std::f64::consts::PI as pi;
-mod camera;
-use crate::camera::*;
+use std::fs::OpenOptions;
+use std::io::Write;
 
 pub fn deg_to_rad(deg:f64) -> f64{
     deg*pi/180.0
@@ -39,15 +41,13 @@ pub fn ray_color(r: &Ray, world: &mut HittablesList, depth: i32) -> Color {
     //If we've exceeded the ray bounce limit, no more light is gathered.
     if depth <= 0{
         Color::new(0.0,0.0,0.0)
-    }else{
-        if world.hit(r, 0.001, infinity, &mut rec){
-            let target = rec.p + rec.normal + Vec3::rand_in_unit_sphere();
-            return 0.5*ray_color(&Ray::new(rec.p, target-rec.p), world, depth-1);
-        }else {
-            let unit_dir = r.direction().unit_vector();
-            let t = 0.5*(unit_dir.y() + 1.0);
-            (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
-        }
+    }else if world.hit(r, 0.001, infinity, &mut rec){
+        let target = rec.p + rec.normal + Vec3::rand_in_unit_sphere();
+        0.5*ray_color(&Ray::new(rec.p, target-rec.p), world, depth-1)
+    }else {
+        let unit_dir = r.direction().unit_vector();
+        let t = 0.5*(unit_dir.y() + 1.0);
+        (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
     }
 }
 
@@ -77,7 +77,7 @@ fn main(){
                                     .open(path)
                                     .unwrap();
 
-    write!(file, "P3\n{} {} \n255\n", IMAGE_WIDTH, IMAGE_HEIGHT);
+    write!(file, "P3\n{} {} \n255\n", IMAGE_WIDTH, IMAGE_HEIGHT).unwrap();
     let mut perc:i32 = 0;
     println!("{}",IMAGE_WIDTH*IMAGE_HEIGHT);
     for j in 0..IMAGE_HEIGHT{

@@ -10,13 +10,14 @@ pub struct HitRecord{
 }
 
 // pub struct HittablesList<'a>(Vec<&'a dyn Hittable>);
+#[derive (Default)]
 pub struct HittablesList<'a>{
     list: Vec<&'a dyn Hittable>
 }
 
 impl HitRecord{
     pub fn new(p: &Point3, normal: &Vec3, t: f64, r: &Ray, outward_normal: &Vec3) -> HitRecord{
-        let mut rec = HitRecord{p: *p, normal: *normal, t: t, front_face: true};
+        let mut rec = HitRecord{p: *p, normal: *normal, t, front_face: true};
         rec.set_face_normal(r, outward_normal);
         rec        
     }
@@ -94,10 +95,9 @@ pub trait Hittable{
 
 #[cfg(test)]
 mod tests {
-    use crate::vec::*;
-    use crate::ray::*;
     use crate::sphere::*;
     use super::*;
+
     #[test]
      fn test_add(){
         let mut list = HittablesList::new();
@@ -107,7 +107,6 @@ mod tests {
         list.add(&s);
         assert_eq!(list.len(), 1);
      }
-
 
     #[test]
     fn test_remove(){
