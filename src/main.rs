@@ -42,7 +42,7 @@ pub fn ray_color(r: &Ray, world: &mut HittablesList, depth: i32) -> Color {
     if depth <= 0{
         Color::new(0.0,0.0,0.0)
     }else if world.hit(r, 0.001, infinity, &mut rec){
-        let target = rec.p + rec.normal + Vec3::rand_in_unit_sphere();
+        let target = rec.p + rec.normal + Vec3::rand_unit_vec();
         0.5*ray_color(&Ray::new(rec.p, target-rec.p), world, depth-1)
     }else {
         let unit_dir = r.direction().unit_vector();

@@ -20,13 +20,9 @@ impl Vec3{
         Vec3{x:rand_double(min, max), y:rand_double(min, max), z:rand_double(min, max)}
     }
 
-    pub fn rand_in_unit_sphere() -> Vec3{
-        loop{
-            let p = Vec3::rand(-1.0, 1.0);
-            if p.length_squared() < 1.0 {
-                break(p)
-            }
-        }
+    pub fn rand_unit_vec() -> Vec3{
+        let p = Vec3::rand(-1.0, 1.0);
+        p/p.length()
     }
 
     pub fn x(&self) -> f64{
@@ -94,7 +90,6 @@ impl Color{
 
     pub fn write_color<T: std::io::Write>(self, writer: &mut T, samples: i32)
     {
-
         let mut r = self.x();
         let mut g = self.y();
         let mut b = self.z();
@@ -235,9 +230,9 @@ mod tests {
 
     #[test]
     fn test_rand_unit_sphere(){
-        let vec_1 = Vec3::rand_in_unit_sphere();
+        let vec_1 = Vec3::rand_unit_vec();
         assert!(vec_1.length() <= 1.0);
-        let vec_2 = Vec3::rand_in_unit_sphere();
+        let vec_2 = Vec3::rand_unit_vec();
         assert!(vec_1 != vec_2);
     }
 }
