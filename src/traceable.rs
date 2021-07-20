@@ -1,5 +1,6 @@
 use crate::vec::*;
 use crate::ray::*;
+use crate::material::*;
 
 #[derive (Copy, Clone, Default)]
 pub struct HitRecord{
@@ -9,10 +10,12 @@ pub struct HitRecord{
     pub front_face: bool
 }
 
-// pub struct HittablesList<'a>(Vec<&'a dyn Hittable>);
+pub trait Traceable: Hit + Scatter{}
+impl<T: Hit + Scatter> Traceable for T {}
+
 #[derive (Default)]
-pub struct HittablesList<'a>{
-    list: Vec<&'a dyn Hittable>
+pub struct TraceableList<'a>{
+    list: Vec<&'a dyn Traceable>
 }
 
 impl HitRecord{
@@ -48,19 +51,19 @@ impl HitRecord{
     }
 }
 
-impl<'a> HittablesList<'a> {
+impl<'a> TraceableList<'a> {
 
-    pub fn new() -> HittablesList<'a>{
-        HittablesList{list: Vec::new()}
+    pub fn new() -> TraceableList<'a>{
+        TraceableList{list: Vec::new()}
     } 
 
-    pub fn add<T>(&mut self, new_hittable: &'a T)
-    where T:Hittable + PartialEq + 'a
+    pub fn add<T>(&mut self, new_traceable: &'a T)
+    where T:Traceable + 'a
     {
-        self.list.push(new_hittable);
+        self.list.push(new_traceable);
     }
 
-    pub fn get(&mut self, index: usize) -> &'a dyn Hittable{
+    pub fn get(&self, index: usize) -> &'a dyn Traceable{
         self.list[index]
     }
 
@@ -72,25 +75,56 @@ impl<'a> HittablesList<'a> {
         self.list.len()
     }
 
-    pub fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool{
+
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> Option<usize>{
         
         let mut temp_rec = HitRecord::default();
         let mut hit_anything = false;
         let mut closest_so_far = t_max;
+        let mut index:usize  = 0;
+        let mut closest_index: usize = 0;
 
-        for &hittable in &self.list{
-            if hittable.hit(r, t_min, closest_so_far, &mut temp_rec){
+        for &traceable in &self.list{
+            if traceable.hit(r, t_min, closest_so_far, &mut temp_rec){
                 hit_anything = true;
                 closest_so_far = temp_rec.t;
                 *rec = temp_rec;
+                closest_index = index;
             }
+            index +=1;
         }
-        hit_anything
+        if hit_anything{
+            Some(closest_index)
+        } else{
+            None
+        }
+    }
+
+
+    pub fn trace(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> Option<(Color, Ray)>{
+        
+        let hit = self.hit(r, t_min, t_max, rec);
+        if hit.is_some(){
+            let closest_index = hit.unwrap();
+            let result = self.get(closest_index).scatter(r, &rec);
+            if result.is_some(){
+                let (attenuation, scattered) = result.unwrap();
+                Some((attenuation, scattered))
+            } else{
+            None
+            }
+        } else{
+            None
+        }
     }
 }
 
-pub trait Hittable{
+pub trait Hit{
     fn hit(&self ,r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool;
+}
+
+pub trait Scatter{
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
 }
 
 #[cfg(test)]
@@ -100,20 +134,22 @@ mod tests {
 
     #[test]
      fn test_add(){
-        let mut list = HittablesList::new();
+        let mut list = TraceableList::new();
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let s = Sphere::new(&center, radius);
+        let mat = Lambertian::default();
+        let s = Sphere::new(&center, radius, &mat);
         list.add(&s);
         assert_eq!(list.len(), 1);
      }
 
     #[test]
     fn test_remove(){
-        let mut list = HittablesList::new();
+        let mut list = TraceableList::new();
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let s = Sphere::new(&center, radius);
+        let mat = Lambertian::default();
+        let s = Sphere::new(&center, radius, &mat);
         list.add(&s);
         list.remove(0);
         assert_eq!(list.len(), 0);
@@ -122,34 +158,36 @@ mod tests {
     #[test]
     fn test_hit(){
         //Case 1: No intersections
-        let mut list = HittablesList::new();
+        let mut list = TraceableList::new();
         let center = Vec3::new(0.0, -10.0, 0.0);
         let radius = 5.0;
-        let s = Sphere::new(&center, radius);
+        let mat = Lambertian::default();
+        let s = Sphere::new(&center, radius, &mat);
         list.add(&s);
         let r = Ray::new(Vec3::new(-10.0, 0.0, 0.0), Vec3::new( 1.0, 0.0, 0.0));
         let t_min = 0.0;
         let t_max = 100.0;
         let mut rec = HitRecord::default();
         let hit = list.hit(&r, t_min, t_max, &mut rec);
-        assert_eq!(hit, false);
+        assert!(hit.is_none());
 
         //Case 2: One intersection
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let s = Sphere::new(&center, radius);
+        let mat = Lambertian::default();
+        let s = Sphere::new(&center, radius, &mat);
         list.add(&s);
         let hit = list.hit(&r, t_min, t_max, &mut rec);
-        assert_eq!(hit, true);
+        assert!(hit.is_some());
         assert_eq!(rec.t, 5.0);  
         
         //Case 3: Two intersections
         let center = Vec3::new(-2.0, 0.0, 0.0);
         let radius = 5.0;
-        let s = Sphere::new(&center, radius);
+        let mat = Lambertian::default();
+        let s = Sphere::new(&center, radius, &mat);
         list.add(&s);
         let hit = list.hit(&r, t_min, t_max, &mut rec);
-        assert_eq!(hit, true);
-        assert_eq!(rec.t, 3.0);
+        assert!(hit.is_some());
     }
 }

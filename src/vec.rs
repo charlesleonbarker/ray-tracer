@@ -20,9 +20,16 @@ impl Vec3{
         Vec3{x:rand_double(min, max), y:rand_double(min, max), z:rand_double(min, max)}
     }
 
+    pub fn rand_in_unit_sphere() -> Vec3{
+        loop{
+            let p = Vec3::rand(-1.0, 1.0);
+            if p.length_squared() < 1.0{
+                break(p)
+            }
+        }
+    }
     pub fn rand_unit_vec() -> Vec3{
-        let p = Vec3::rand(-1.0, 1.0);
-        p/p.length()
+        Vec3::rand_in_unit_sphere().unit_vector()
     }
 
     pub fn x(&self) -> f64{
@@ -59,6 +66,18 @@ impl Vec3{
                   lhs.x*rhs.y - lhs.y*rhs.x)
     }
 
+    pub fn near_zero(&self) -> bool{
+        let min = 1e-8;
+        self.x.abs() < min && self.y.abs() < min && self.z.abs() < min
+    }
+
+    pub fn reflect(&self, normal: &Vec3) -> Vec3{
+        self - 2.0*Vec3::dot(&self, normal)*normal
+    }
+
+    pub fn elementwise_mult(&self, rhs: &Vec3) -> Vec3{
+        Vec3::new(self.x*rhs.x, self.y*rhs.y, self.z*rhs.z)
+    }
 }
 
 //Operator overloading using impl_ops
@@ -234,5 +253,27 @@ mod tests {
         assert!(vec_1.length() <= 1.0);
         let vec_2 = Vec3::rand_unit_vec();
         assert!(vec_1 != vec_2);
+    }
+
+    #[test]
+    fn test_elementwise_mult(){
+        let vec1 = Vec3::new(1.0, 2.0, 3.0);
+        let vec2 = Vec3::new(-1.0, 2.0, -3.0);
+        assert_eq!(Vec3::new(-1.0, 4.0, -9.0), vec1.elementwise_mult(&vec2));
+    }
+
+    #[test]
+    fn test_near_zero(){
+        let vec1 = Vec3::new(1e-8 - 1e-9, 1e-8 - 1e-9, 1e-8 - 1e-9);
+        let vec2 = Vec3::new(1e-8, 1e-8, 1e-8);
+        assert_eq!(vec1.near_zero(), true);
+        assert_eq!(vec2.near_zero(), false);
+    }
+
+    #[test]
+    fn test_reflect(){
+        let vec = Vec3::new(1.0, 0.0, 0.0);
+        let normal = Vec3::new(-1.0, 0.0, 0.0);
+        assert_eq!(vec.reflect(&normal), Vec3::new(-1.0, 0.0, 0.0));
     }
 }

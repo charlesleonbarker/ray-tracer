@@ -1,20 +1,22 @@
 use crate::vec::*;
 use crate::ray::*;
-use crate::hittable::*;
+use crate::traceable::*;
+use crate::material::*;
 
-#[derive (PartialEq, Copy, Clone, Default)]
-pub struct Sphere{
+#[derive (Copy, Clone)]
+pub struct Sphere<'a, M> where M: Scatter{
     center: Point3,
     radius: f64,
+    material: &'a M
 }
 
-impl Sphere{
-    pub fn new(cen: &Point3, rad: f64) -> Sphere{
-        Sphere{center: *cen, radius: rad}
+impl<'a, M> Sphere<'a, M> where M: Scatter{
+    pub fn new(cen: &Point3, rad: f64, mat: &'a M) -> Sphere<'a, M>{
+        Sphere{center: *cen, radius: rad, material: mat}
     }
 }
 
-impl Hittable for Sphere{
+impl<'a, M> Hit for Sphere<'a, M> where M: Scatter{
     fn hit(&self, r:&Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool{
         let oc = r.origin() - self.center;
         let a = r.direction().length_squared();
@@ -42,6 +44,18 @@ impl Hittable for Sphere{
     }
 }
 
+impl<'a, M> Scatter for Sphere<'a, M> where M: Scatter{
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>{
+        let result= self.material.scatter(r_in, rec);
+        if result.is_some(){
+            let (attenuation, scattered) = result.unwrap();
+            Some((attenuation, scattered))
+        } else{
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -49,7 +63,8 @@ mod tests {
     fn test_new(){
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let s = Sphere::new(&center, radius);
+        let mat = Lambertian::default();
+        let s = Sphere::new(&center, radius,&mat);
         assert_eq!(s.center, Vec3::new(0.0, 0.0, 0.0));
         assert_eq!(s.radius, 5.0);
     }
@@ -60,7 +75,8 @@ mod tests {
         //Case 1: Intersection from outside of sphere
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let s = Sphere::new(&center, radius);
+        let mat = Lambertian::default();
+        let s = Sphere::new(&center, radius, &mat);
         let r = Ray::new(Vec3::new(-10.0, 0.0, 0.0), Vec3::new( 1.0, 0.0, 0.0));
         let t_min = 0.0;
         let t_max = 100.0;

@@ -1,19 +1,22 @@
 #[macro_use] 
 
 extern crate impl_ops;
-extern crate rand;
+extern crate fastrand;
 
 mod vec;
 mod ray;
 mod sphere;
-mod hittable;
+mod traceable;
 mod camera;
+mod material;
 
 use crate::vec::*;
 use crate::ray::*;
 use crate::sphere::*;
-use crate::hittable::*;
+use crate::traceable::*;
 use crate::camera::*;
+use crate::material::*;
+
 
 use std::f64::INFINITY as infinity;
 use std::f64::consts::PI as pi;
@@ -26,7 +29,7 @@ pub fn deg_to_rad(deg:f64) -> f64{
 
 //Generates random numbers between [min_inc, max_exc)
 pub fn rand_double(min_inc: f64, max_exc: f64) -> f64{
-    rand::random::<f64>()*(max_exc - min_inc) + min_inc
+    fastrand::f64()*(max_exc - min_inc) + min_inc
 }
 
 pub fn bound(x: f64, min: f64, max:f64) -> f64{
@@ -35,15 +38,18 @@ pub fn bound(x: f64, min: f64, max:f64) -> f64{
     x
 }
 
-pub fn ray_color(r: &Ray, world: &mut HittablesList, depth: i32) -> Color {
+pub fn ray_color(r: &Ray, world: &TraceableList, depth: i32) -> Color {
     let mut rec = HitRecord::default();
 
     //If we've exceeded the ray bounce limit, no more light is gathered.
     if depth <= 0{
-        Color::new(0.0,0.0,0.0)
-    }else if world.hit(r, 0.001, infinity, &mut rec){
-        let target = rec.p + rec.normal + Vec3::rand_unit_vec();
-        0.5*ray_color(&Ray::new(rec.p, target-rec.p), world, depth-1)
+        return Color::new(0.0,0.0,0.0)
+    }
+
+    let bounced = world.trace(r, 0.001, infinity, &mut rec);
+    if bounced.is_some(){
+        let (attenuation, scattered) = bounced.unwrap();
+        attenuation.elementwise_mult(&ray_color(&scattered, world, depth-1))
     }else {
         let unit_dir = r.direction().unit_vector();
         let t = 0.5*(unit_dir.y() + 1.0);
@@ -54,17 +60,28 @@ pub fn ray_color(r: &Ray, world: &mut HittablesList, depth: i32) -> Color {
 fn main(){
 
     //Image
-    const IMAGE_WIDTH:i32 = 400;
+    const IMAGE_WIDTH:i32 = 800;
     const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
     const SAMPLES_PER_PIXEL: i32 = 100;
     const MAX_DEPTH: i32 = 50;
 
     //World
-    let mut world = HittablesList::new();
-    let s1 = Sphere::new(&Point3::new(0.0,0.0,-1.0), 0.5);
-    let ground = Sphere::new(&Point3::new(0.0,-100.5,-1.0), 100.0);
-    world.add(&s1);
+    let mut world = TraceableList::new();
+    let mat_ground = Lambertian::new(Color::new(0.8, 0.8, 0.0));
+    let mat_center = Lambertian::new(Color::new(0.7, 0.3, 0.3));
+    let mat_left = Metal::new(Color::new(0.8, 0.8, 0.8));
+    let mat_right = Metal::new(Color::new(0.8, 0.6, 0.2));
+
+    let ground = Sphere::new(&Point3::new(0.0,-100.5,-1.0), 100.0, &mat_ground);
+    let sphere_center = Sphere::new(&Point3::new(0.0,0.0,-1.0), 0.5, &mat_center);
+    let sphere_left = Sphere::new(&Point3::new(-1.0,0.0,-1.0), 0.5, &mat_left);
+    let sphere_right = Sphere::new(&Point3::new(1.0,0.0,-1.0), 0.5, &mat_right);
+    
     world.add(&ground);
+    world.add(&sphere_center);
+    world.add(&sphere_left);
+    world.add(&sphere_right);
+
 
     //Camera
     let cam = Camera::new();
