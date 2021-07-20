@@ -46,14 +46,15 @@ pub fn ray_color(r: &Ray, world: &TraceableList, depth: i32) -> Color {
         return Color::new(0.0,0.0,0.0)
     }
 
-    let bounced = world.trace(r, 0.001, infinity, &mut rec);
-    if bounced.is_some(){
-        let (attenuation, scattered) = bounced.unwrap();
-        attenuation.elementwise_mult(&ray_color(&scattered, world, depth-1))
-    }else {
-        let unit_dir = r.direction().unit_vector();
-        let t = 0.5*(unit_dir.y() + 1.0);
-        (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
+    let result = world.trace(r, 0.001, infinity, &mut rec);
+    match result{
+        TraceResult::Scattered((attenuation, scattered)) => return attenuation.elementwise_mult(&ray_color(&scattered, world, depth-1)),
+        TraceResult::Absorbed => return Color::new(0.0, 0.0, 0.0),
+        TraceResult::Missed =>{
+            let unit_dir = r.direction().unit_vector();
+            let t = 0.5*(unit_dir.y() + 1.0);
+            return (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
+        }         
     }
 }
 
@@ -69,8 +70,8 @@ fn main(){
     let mut world = TraceableList::new();
     let mat_ground = Lambertian::new(Color::new(0.8, 0.8, 0.0));
     let mat_center = Lambertian::new(Color::new(0.7, 0.3, 0.3));
-    let mat_left = Metal::new(Color::new(0.8, 0.8, 0.8));
-    let mat_right = Metal::new(Color::new(0.8, 0.6, 0.2));
+    let mat_left = Metal::new(Color::new(0.8, 0.8, 0.8), 0.3);
+    let mat_right = Metal::new(Color::new(0.8, 0.6, 0.2), 1.0);
 
     let ground = Sphere::new(&Point3::new(0.0,-100.5,-1.0), 100.0, &mat_ground);
     let sphere_center = Sphere::new(&Point3::new(0.0,0.0,-1.0), 0.5, &mat_center);

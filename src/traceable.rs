@@ -10,6 +10,13 @@ pub struct HitRecord{
     pub front_face: bool
 }
 
+pub enum TraceResult{
+    Missed,
+    Absorbed,
+    Scattered((Color, Ray))
+}
+
+
 pub trait Traceable: Hit + Scatter{}
 impl<T: Hit + Scatter> Traceable for T {}
 
@@ -101,7 +108,7 @@ impl<'a> TraceableList<'a> {
     }
 
 
-    pub fn trace(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> Option<(Color, Ray)>{
+    pub fn trace(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> TraceResult{
         
         let hit = self.hit(r, t_min, t_max, rec);
         if hit.is_some(){
@@ -109,12 +116,12 @@ impl<'a> TraceableList<'a> {
             let result = self.get(closest_index).scatter(r, &rec);
             if result.is_some(){
                 let (attenuation, scattered) = result.unwrap();
-                Some((attenuation, scattered))
+                TraceResult::Scattered((attenuation, scattered))
             } else{
-            None
+            TraceResult::Absorbed
             }
         } else{
-            None
+            TraceResult::Missed
         }
     }
 }
