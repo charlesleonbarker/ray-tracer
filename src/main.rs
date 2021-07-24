@@ -76,11 +76,13 @@ fn main(){
     let ground = Sphere::new(&Point3::new(0.0,-100.5,-1.0), 100.0, &mat_ground);
     let sphere_center = Sphere::new(&Point3::new(0.0,0.0,-1.0), 0.5, &mat_center);
     let sphere_left = Sphere::new(&Point3::new(-1.0,0.0,-1.0), 0.5, &mat_left);
+    let sphere_left_inner = Sphere::new(&Point3::new(-1.0,0.0,-1.0), -0.4, &mat_left);
     let sphere_right = Sphere::new(&Point3::new(1.0,0.0,-1.0), 0.5, &mat_right);
     
     world.add(&ground);
     world.add(&sphere_center);
     world.add(&sphere_left);
+    world.add(&sphere_left_inner);
     world.add(&sphere_right);
 
 
