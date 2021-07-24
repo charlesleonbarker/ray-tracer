@@ -10,13 +10,6 @@ pub struct HitRecord{
     pub front_face: bool
 }
 
-pub enum TraceResult{
-    Missed,
-    Absorbed,
-    Scattered((Color, Ray))
-}
-
-
 pub trait Traceable: Hit + Scatter{}
 impl<T: Hit + Scatter> Traceable for T {}
 
@@ -24,6 +17,13 @@ impl<T: Hit + Scatter> Traceable for T {}
 pub struct TraceableList<'a>{
     list: Vec<&'a dyn Traceable>
 }
+
+pub enum TraceResult{
+    Missed,
+    Absorbed,
+    Scattered((Color, Ray))
+}
+
 
 impl HitRecord{
     pub fn new(p: &Point3, normal: &Vec3, t: f64, r: &Ray, outward_normal: &Vec3) -> HitRecord{

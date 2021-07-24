@@ -61,7 +61,7 @@ pub fn ray_color(r: &Ray, world: &TraceableList, depth: i32) -> Color {
 fn main(){
 
     //Image
-    const IMAGE_WIDTH:i32 = 800;
+    const IMAGE_WIDTH:i32 = 600;
     const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
     const SAMPLES_PER_PIXEL: i32 = 100;
     const MAX_DEPTH: i32 = 50;
@@ -69,9 +69,9 @@ fn main(){
     //World
     let mut world = TraceableList::new();
     let mat_ground = Lambertian::new(Color::new(0.8, 0.8, 0.0));
-    let mat_center = Lambertian::new(Color::new(0.7, 0.3, 0.3));
-    let mat_left = Metal::new(Color::new(0.8, 0.8, 0.8), 0.3);
-    let mat_right = Metal::new(Color::new(0.8, 0.6, 0.2), 1.0);
+    let mat_center = Lambertian::new(Color::new(0.2, 0.3, 0.5));
+    let mat_left = Dielectric::new(1.5);
+    let mat_right = Metal::new(Color::new(0.8, 0.6, 0.2), 0.7);
 
     let ground = Sphere::new(&Point3::new(0.0,-100.5,-1.0), 100.0, &mat_ground);
     let sphere_center = Sphere::new(&Point3::new(0.0,0.0,-1.0), 0.5, &mat_center);

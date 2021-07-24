@@ -78,6 +78,13 @@ impl Vec3{
     pub fn elementwise_mult(&self, rhs: &Vec3) -> Vec3{
         Vec3::new(self.x*rhs.x, self.y*rhs.y, self.z*rhs.z)
     }
+
+    pub fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3{
+        let cos_theta = Vec3::dot(&(-uv), &n).min(1.0);
+        let r_out_perp = etai_over_etat*(uv + cos_theta*n);
+        let r_out_parallel = -(1.0 - r_out_perp.length_squared()).abs().sqrt() * n;
+        r_out_perp + r_out_parallel
+    }
 }
 
 //Operator overloading using impl_ops
@@ -275,5 +282,14 @@ mod tests {
         let vec = Vec3::new(1.0, 0.0, 0.0);
         let normal = Vec3::new(-1.0, 0.0, 0.0);
         assert_eq!(vec.reflect(&normal), Vec3::new(-1.0, 0.0, 0.0));
+    }
+
+    
+    #[test]
+    fn test_refract(){
+        let vec = Vec3::new(0.5, 0.5, 0.0);
+        let normal = Vec3::new(1.0, 0.0, 0.0);
+        let reflective_index = 1.5;
+        assert_eq!(Vec3::refract(&vec, &normal, reflective_index), Vec3::new(-(1.0-0.75f64.powi(2)).sqrt(), 0.75, 0.0));
     }
 }

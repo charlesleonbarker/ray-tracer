@@ -36,7 +36,6 @@ impl<'a, M> Hit for Sphere<'a, M> where M: Scatter{
             }
             rec.t = root;
             rec.p = r.at(rec.t);
-            rec.normal = (rec.p - self.center)/self.radius;
             let outward_normal = (rec.p - self.center)/self.radius;
             rec.set_face_normal(r, &outward_normal);
             true
@@ -107,5 +106,16 @@ mod tests {
         assert_eq!(rec.normal(), Vec3::new(-1.0, 0.0, 0.0));
         assert_eq!(rec.p(), Point3::new(-5.0, 0.0, 0.0));
         assert_eq!(rec.front_face(), true);
+
+        //Case 4: Intersection of inverted sphere (negative radius)
+        let s = Sphere::new(&center, -radius, &mat);
+        let r = Ray::new(Vec3::new(0.0, -10.0, 0.0), Vec3::new( 0.0, 1.0, 0.0));
+        let mut rec = HitRecord::default();
+        let hit = s.hit(&r, t_min, t_max,&mut rec);
+        assert_eq!(hit, true);
+        assert_eq!(rec.t(), 5.0);
+        assert_eq!(rec.normal(), Vec3::new(0.0, -1.0, 0.0));
+        assert_eq!(rec.p(), Point3::new(0.0, -5.0, 0.0));
+        assert_eq!(rec.front_face(), false);
     }
 }
