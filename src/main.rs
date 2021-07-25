@@ -60,27 +60,33 @@ pub fn ray_color(r: &Ray, world: &TraceableList, depth: i32) -> Color {
 
 fn main(){
 
-    let r = (pi/4.0).cos();
-
     //Image
-    const IMAGE_WIDTH:i32 = 600;
+    const IMAGE_WIDTH:i32 = 1200;
     const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 100;
+    const SAMPLES_PER_PIXEL: i32 = 1000;
     const MAX_DEPTH: i32 = 50;
 
     //World
     let mut world = TraceableList::new();
-    let mat_left = Lambertian::new(Color::new(0.0, 0.0, 1.0));
-    let mat_right = Lambertian::new(Color::new(1.0, 0.0, 0.0));
+    let mat_ground = Lambertian::new(Color::new(0.8, 0.8, 0.0));
+    let mat_center = Lambertian::new(Color::new(0.1, 0.2, 0.5));
+    let mat_left = Dielectric::new(1.5);
+    let mat_right = Metal::new(Color::new(0.8, 0.6, 0.2), 0.0);
 
-    let sphere_left = Sphere::new(&Point3::new(-r,0.0,-1.0), r, &mat_left);
-    let sphere_right = Sphere::new(&Point3::new(r,0.0,-1.0), r, &mat_right);
-
+    let ground = Sphere::new(&Point3::new(0.0,-100.5,-1.0), 100.0, &mat_ground);
+    let sphere_center = Sphere::new(&Point3::new(0.0,0.0,-1.0), 0.5, &mat_center);
+    let sphere_left = Sphere::new(&Point3::new(-1.0,0.0,-1.0), 0.5, &mat_left);
+    let sphere_left_inner = Sphere::new(&Point3::new(-1.0,0.0,-1.0), -0.45, &mat_left);
+    let sphere_right = Sphere::new(&Point3::new(1.0,0.0,-1.0), 0.5, &mat_right);
+    
+    world.add(&ground);
+    world.add(&sphere_center);
     world.add(&sphere_left);
+    world.add(&sphere_left_inner);
     world.add(&sphere_right);
 
     //Camera
-    let cam = Camera::new(90.0, ASPECT_RATIO);
+    let cam = Camera::new(Point3::new(-2.0, 2.0, 1.0), Point3::new(0.0, 0.0, -1.0), Vec3::new(0.0, 1.0, 0.0), 90.0, ASPECT_RATIO);
 
     //Render
     let path = "results.ppm";
