@@ -28,6 +28,16 @@ impl Vec3{
             }
         }
     }
+
+    pub fn rand_in_unit_disk() -> Vec3{
+        loop{
+            let p = Vec3::new(rand_double(-1.0, 1.0), rand_double(-1.0, 1.0), 0.0);
+            if p.length_squared() < 1.0{
+                break(p)
+            }
+        }
+    }
+
     pub fn rand_unit_vec() -> Vec3{
         Vec3::rand_in_unit_sphere().unit_vector()
     }

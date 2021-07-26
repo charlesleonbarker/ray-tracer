@@ -48,12 +48,12 @@ pub fn ray_color(r: &Ray, world: &TraceableList, depth: i32) -> Color {
 
     let result = world.trace(r, 0.001, infinity, &mut rec);
     match result{
-        TraceResult::Scattered((attenuation, scattered)) => return attenuation.elementwise_mult(&ray_color(&scattered, world, depth-1)),
-        TraceResult::Absorbed => return Color::new(0.0, 0.0, 0.0),
+        TraceResult::Scattered((attenuation, scattered)) => attenuation.elementwise_mult(&ray_color(&scattered, world, depth-1)),
+        TraceResult::Absorbed => Color::new(0.0, 0.0, 0.0),
         TraceResult::Missed =>{
             let unit_dir = r.direction().unit_vector();
             let t = 0.5*(unit_dir.y() + 1.0);
-            return (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
+            (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
         }         
     }
 }
@@ -61,9 +61,9 @@ pub fn ray_color(r: &Ray, world: &TraceableList, depth: i32) -> Color {
 fn main(){
 
     //Image
-    const IMAGE_WIDTH:i32 = 1200;
+    const IMAGE_WIDTH:i32 = 400;
     const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 1000;
+    const SAMPLES_PER_PIXEL: i32 = 100;
     const MAX_DEPTH: i32 = 50;
 
     //World
@@ -86,7 +86,12 @@ fn main(){
     world.add(&sphere_right);
 
     //Camera
-    let cam = Camera::new(Point3::new(-2.0, 2.0, 1.0), Point3::new(0.0, 0.0, -1.0), Vec3::new(0.0, 1.0, 0.0), 90.0, ASPECT_RATIO);
+    let look_from = Point3::new(3.0, 3.0, 2.0);
+    let look_at = Point3::new(0.0, 0.0, -1.0);
+    let v_up = Vec3::new(0.0, 1.0, 0.0);
+    let dist_to_focus = (look_from - look_at).length();
+    let aperture = 2.0;
+    let cam = Camera::new(look_from, look_at, v_up, 20.0, ASPECT_RATIO, aperture, dist_to_focus);
 
     //Render
     let path = "results.ppm";
@@ -111,7 +116,7 @@ fn main(){
                 let u = (rand_double(0.0, 1.0) + i as f64)/(IMAGE_WIDTH as f64 - 1.0);
                 let v = (rand_double(0.0, 1.0) + (IMAGE_HEIGHT - j) as f64)/((IMAGE_HEIGHT - 1) as f64);
                 let r = cam.get_ray(u,v);
-                pixel_color = pixel_color + ray_color(&r, &mut world, MAX_DEPTH);
+                pixel_color = pixel_color + ray_color(&r, &world, MAX_DEPTH);
             }
             pixel_color.write_color(&mut file, SAMPLES_PER_PIXEL);
         }
