@@ -79,7 +79,7 @@ impl Scatter for Dielectric{
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>{
         let attenuation = Color::new(1.0, 1.0, 1.0);
         let mut refraction_ratio = self.index_of_refraction;
-        if rec.front_face == true{
+        if rec.front_face{
             refraction_ratio = 1.0/self.index_of_refraction;
         }
         
