@@ -4,17 +4,19 @@ use crate::traceable::*;
 use crate::*;
 
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct Lambertian{
     albedo: Color
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct Metal{
     albedo: Color,
     fuzz: f64
 }
 
+
+#[derive(Default, Clone, Copy)]
 pub struct Dielectric{
     index_of_refraction :f64,
 }

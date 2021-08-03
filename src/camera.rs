@@ -4,7 +4,7 @@ use crate::deg_to_rad;
 use crate::vec::*;
 use crate::ray::*;
 
-pub const ASPECT_RATIO: f64 = 16.0/9.0;
+pub const ASPECT_RATIO: f64 = 3.0/2.0;
 
 #[derive (Copy, Clone, Default)]
 pub struct Camera{

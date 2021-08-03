@@ -10,12 +10,12 @@ pub struct HitRecord{
     pub front_face: bool
 }
 
-pub trait Traceable: Hit + Scatter{}
-impl<T: Hit + Scatter> Traceable for T {}
+pub trait Traceable: Hit + Scatter + 'static{}
+impl<T: Hit + Scatter + 'static> Traceable for T {}
 
 #[derive (Default)]
-pub struct TraceableList<'a>{
-    list: Vec<&'a dyn Traceable>
+pub struct TraceableList{
+    list: Vec<Box<dyn Traceable>>
 }
 
 pub enum TraceResult{
@@ -58,24 +58,20 @@ impl HitRecord{
     }
 }
 
-impl<'a> TraceableList<'a> {
+impl TraceableList{
 
-    pub fn new() -> TraceableList<'a>{
+    pub fn new() -> TraceableList{
         TraceableList{list: Vec::new()}
     } 
 
-    pub fn add<T>(&mut self, new_traceable: &'a T)
-    where T:Traceable + 'a
+    pub fn add<T>(&mut self, new_traceable: Box<T>)
+    where T:Traceable
     {
         self.list.push(new_traceable);
     }
 
-    pub fn get(&self, index: usize) -> &'a dyn Traceable{
-        self.list[index]
-    }
-
-    pub fn remove(&mut self, index: usize){
-        self.list.remove(index);
+    pub fn remove(&mut self, index: usize) -> Box<dyn Traceable>{
+        self.list.remove(index)
     }
 
     pub fn len(&self) -> usize{
@@ -91,7 +87,7 @@ impl<'a> TraceableList<'a> {
         let mut index:usize  = 0;
         let mut closest_index: usize = 0;
 
-        for &traceable in &self.list{
+        for traceable in &self.list{
             if traceable.hit(r, t_min, closest_so_far, &mut temp_rec){
                 hit_anything = true;
                 closest_so_far = temp_rec.t;
@@ -113,7 +109,7 @@ impl<'a> TraceableList<'a> {
         let hit = self.hit(r, t_min, t_max, rec);
         if hit.is_some(){
             let closest_index = hit.unwrap();
-            let result = self.get(closest_index).scatter(r, &rec);
+            let result = self.list[closest_index].scatter(r, &rec);
             if result.is_some(){
                 let (attenuation, scattered) = result.unwrap();
                 TraceResult::Scattered((attenuation, scattered))
@@ -145,8 +141,8 @@ mod tests {
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
         let mat = Lambertian::default();
-        let s = Sphere::new(&center, radius, &mat);
-        list.add(&s);
+        let s = Box::new(Sphere::new(center, radius, mat));
+        list.add(s);
         assert_eq!(list.len(), 1);
      }
 
@@ -156,8 +152,8 @@ mod tests {
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
         let mat = Lambertian::default();
-        let s = Sphere::new(&center, radius, &mat);
-        list.add(&s);
+        let s = Box::new(Sphere::new(center, radius, mat));
+        list.add(s);
         list.remove(0);
         assert_eq!(list.len(), 0);
     }
@@ -169,8 +165,8 @@ mod tests {
         let center = Vec3::new(0.0, -10.0, 0.0);
         let radius = 5.0;
         let mat = Lambertian::default();
-        let s = Sphere::new(&center, radius, &mat);
-        list.add(&s);
+        let s = Box::new(Sphere::new(center, radius, mat));
+        list.add(s);
         let r = Ray::new(Vec3::new(-10.0, 0.0, 0.0), Vec3::new( 1.0, 0.0, 0.0));
         let t_min = 0.0;
         let t_max = 100.0;
@@ -182,8 +178,8 @@ mod tests {
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
         let mat = Lambertian::default();
-        let s = Sphere::new(&center, radius, &mat);
-        list.add(&s);
+        let s = Box::new(Sphere::new(center, radius, mat));
+        list.add(s);
         let hit = list.hit(&r, t_min, t_max, &mut rec);
         assert!(hit.is_some());
         assert_eq!(rec.t, 5.0);  
@@ -192,8 +188,8 @@ mod tests {
         let center = Vec3::new(-2.0, 0.0, 0.0);
         let radius = 5.0;
         let mat = Lambertian::default();
-        let s = Sphere::new(&center, radius, &mat);
-        list.add(&s);
+        let s = Box::new(Sphere::new(center, radius, mat));
+        list.add(s);
         let hit = list.hit(&r, t_min, t_max, &mut rec);
         assert!(hit.is_some());
     }

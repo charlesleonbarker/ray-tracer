@@ -61,36 +61,59 @@ pub fn ray_color(r: &Ray, world: &TraceableList, depth: i32) -> Color {
 fn main(){
 
     //Image
-    const IMAGE_WIDTH:i32 = 400;
+    const IMAGE_WIDTH:i32 = 1200;
     const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 100;
+    const SAMPLES_PER_PIXEL: i32 = 500;
     const MAX_DEPTH: i32 = 50;
 
     //World
     let mut world = TraceableList::new();
-    let mat_ground = Lambertian::new(Color::new(0.8, 0.8, 0.0));
-    let mat_center = Lambertian::new(Color::new(0.1, 0.2, 0.5));
-    let mat_left = Dielectric::new(1.5);
-    let mat_right = Metal::new(Color::new(0.8, 0.6, 0.2), 0.0);
+    let mat_ground = Lambertian::new(Color::new(0.5, 0.5, 0.5));
+    let ground = Box::new(Sphere::new(Point3::new(0.0,-1000.0,0.0), 1000.0, mat_ground));
+    world.add(ground);
 
-    let ground = Sphere::new(&Point3::new(0.0,-100.5,-1.0), 100.0, &mat_ground);
-    let sphere_center = Sphere::new(&Point3::new(0.0,0.0,-1.0), 0.5, &mat_center);
-    let sphere_left = Sphere::new(&Point3::new(-1.0,0.0,-1.0), 0.5, &mat_left);
-    let sphere_left_inner = Sphere::new(&Point3::new(-1.0,0.0,-1.0), -0.45, &mat_left);
-    let sphere_right = Sphere::new(&Point3::new(1.0,0.0,-1.0), 0.5, &mat_right);
+    for a in -11..12{
+        for b in -11..12{
+            let choose_mat = rand_double(0.0, 1.0);
+            let center = Point3::new(a as f64 + 0.9*rand_double(0.0, 1.0), 0.2, b as f64 + 0.9*rand_double(0.0, 1.0));
+
+            if choose_mat < 0.6{
+                let albedo = Color::rand(0.0, 1.0).elementwise_mult(&Color::rand(0.0, 1.0));
+                let sphere_material = Lambertian::new(albedo);
+                let sphere = Box::new(Sphere::new(center, 0.2, sphere_material));
+                world.add(sphere);
+            } else if choose_mat < 0.9{
+                let albedo = Color::rand(0.5, 1.0);
+                let fuzz = rand_double(0.0, 0.5);
+                let sphere_material = Metal::new(albedo, fuzz);
+                let sphere = Box::new(Sphere::new(center, 0.2, sphere_material));
+                world.add(sphere);
+            } else {
+                let sphere_material = Dielectric::new(1.5);
+                let sphere = Box::new(Sphere::new(center, 0.2, sphere_material));
+                world.add(sphere);
+            }
+        }
+    }
+    let mat_center = Dielectric::new(1.5);
+    let mat_left = Lambertian::new(Color::new(0.4, 0.2, 0.1));
+    let mat_right = Metal::new(Color::new(0.7, 0.6, 0.5), 0.0);
+
+    let sphere_center = Box::new(Sphere::new(Point3::new(0.0,1.0,0.0), 1.0, mat_center));
+    let sphere_left = Box::new(Sphere::new(Point3::new(-4.0,1.0,0.0), 1.0, mat_left));
+    let sphere_right = Box::new(Sphere::new(Point3::new(4.0,1.0,0.0), 1.0, mat_right));
     
-    world.add(&ground);
-    world.add(&sphere_center);
-    world.add(&sphere_left);
-    world.add(&sphere_left_inner);
-    world.add(&sphere_right);
+
+    world.add(sphere_center);
+    world.add(sphere_left);
+    world.add(sphere_right);
 
     //Camera
-    let look_from = Point3::new(3.0, 3.0, 2.0);
-    let look_at = Point3::new(0.0, 0.0, -1.0);
+    let look_from = Point3::new(13.0, 2.0, 3.0);
+    let look_at = Point3::new(0.0, 0.0, 0.0);
     let v_up = Vec3::new(0.0, 1.0, 0.0);
-    let dist_to_focus = (look_from - look_at).length();
-    let aperture = 2.0;
+    let dist_to_focus = 10.0;
+    let aperture = 0.1;
     let cam = Camera::new(look_from, look_at, v_up, 20.0, ASPECT_RATIO, aperture, dist_to_focus);
 
     //Render
