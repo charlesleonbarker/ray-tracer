@@ -9,6 +9,7 @@ mod sphere;
 mod traceable;
 mod camera;
 mod material;
+mod util;
 
 use crate::vec::*;
 use crate::ray::*;
@@ -16,27 +17,12 @@ use crate::sphere::*;
 use crate::traceable::*;
 use crate::camera::*;
 use crate::material::*;
+use crate::util::*;
 
 
-use std::f64::INFINITY as infinity;
-use std::f64::consts::PI as pi;
+use std::f64::INFINITY;
 use std::fs::OpenOptions;
 use std::io::Write;
-
-pub fn deg_to_rad(deg:f64) -> f64{
-    deg*pi/180.0
-}
-
-//Generates random numbers between [min_inc, max_exc)
-pub fn rand_double(min_inc: f64, max_exc: f64) -> f64{
-    fastrand::f64()*(max_exc - min_inc) + min_inc
-}
-
-pub fn bound(x: f64, min: f64, max:f64) -> f64{
-    if x < min{return min}
-    if x > max{return max}
-    x
-}
 
 pub fn ray_color(r: &Ray, world: &TraceableList, depth: i32) -> Color {
     let mut rec = HitRecord::default();
@@ -46,7 +32,7 @@ pub fn ray_color(r: &Ray, world: &TraceableList, depth: i32) -> Color {
         return Color::new(0.0,0.0,0.0)
     }
 
-    let result = world.trace(r, 0.001, infinity, &mut rec);
+    let result = world.trace(r, 0.001, INFINITY, &mut rec);
     match result{
         TraceResult::Scattered((attenuation, scattered)) => attenuation.elementwise_mult(&ray_color(&scattered, world, depth-1)),
         TraceResult::Absorbed => Color::new(0.0, 0.0, 0.0),
@@ -61,9 +47,9 @@ pub fn ray_color(r: &Ray, world: &TraceableList, depth: i32) -> Color {
 fn main(){
 
     //Image
-    const IMAGE_WIDTH:i32 = 1200;
+    const IMAGE_WIDTH:i32 = 400;
     const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 500;
+    const SAMPLES_PER_PIXEL: i32 = 50;
     const MAX_DEPTH: i32 = 50;
 
     //World
@@ -148,6 +134,7 @@ fn main(){
 
 #[cfg(test)]
 mod tests {
+    use std::f64::consts::PI;
     use super::*;
 
     #[test]
@@ -163,7 +150,7 @@ mod tests {
     fn test_deg_2_rad(){
         let deg = 180.0;
         let rad = deg_to_rad(deg);
-        assert_eq!(pi, rad);
+        assert_eq!(PI, rad);
     }
 
 }
