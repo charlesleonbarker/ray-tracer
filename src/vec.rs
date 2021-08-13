@@ -3,9 +3,7 @@ use crate::*;
 
 #[derive (PartialEq, Debug, Copy, Clone, Default)]
 pub struct Vec3{
-    x: f64,
-    y: f64,
-    z: f64,
+    arr: [f64; 3]
 }
 
 pub type Point3 = Vec3;
@@ -13,11 +11,11 @@ pub type Color = Vec3;
 
 impl Vec3{
     pub fn new(x: f64, y: f64, z:f64) -> Vec3{
-        Vec3{x,y,z}
+        Vec3{arr: [x,y,z]}
     }
 
     pub fn rand(min: f64, max:f64) -> Vec3{
-        Vec3{x:rand_double(min, max), y:rand_double(min, max), z:rand_double(min, max)}
+        Vec3{arr:[rand_double(min, max), rand_double(min, max), rand_double(min, max)]}
     }
 
     pub fn rand_in_unit_sphere() -> Vec3{
@@ -43,15 +41,19 @@ impl Vec3{
     }
 
     pub fn x(&self) -> f64{
-        self.x
+        self.arr[0]
     }
 
     pub fn y(&self) -> f64{
-        self.y
+        self.arr[1]
     }
 
     pub fn z(&self) -> f64{
-        self.z
+        self.arr[2]
+    }
+
+    pub fn index(&self, index: usize) -> f64{
+        self.arr[index]
     }
 
     pub fn length(&self) -> f64{
@@ -59,11 +61,11 @@ impl Vec3{
     }
 
     pub fn length_squared(&self) -> f64{
-        self.x.powi(2) + self.y.powi(2) + self.z.powi(2)
+        self.x().powi(2) + self.y().powi(2) + self.z().powi(2)
     }
 
     pub fn dot(lhs:&Vec3, rhs:&Vec3) -> f64{
-        lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z
+        lhs.x()*rhs.x() + lhs.y()*rhs.y() + lhs.z()*rhs.z()
     }
 
     pub fn unit_vector(&self) -> Vec3{
@@ -71,14 +73,14 @@ impl Vec3{
     }
 
     pub fn cross(lhs: &Vec3, rhs: &Vec3) -> Vec3{
-        Vec3::new(lhs.y*rhs.z - lhs.z*rhs.y, 
-                  lhs.z*rhs.x - lhs.x*rhs.z,
-                  lhs.x*rhs.y - lhs.y*rhs.x)
+        Vec3::new(lhs.y()*rhs.z() - lhs.z()*rhs.y(), 
+                  lhs.z()*rhs.x() - lhs.x()*rhs.z(),
+                  lhs.x()*rhs.y() - lhs.y()*rhs.x())
     }
 
     pub fn near_zero(&self) -> bool{
         let min = 1e-8;
-        self.x.abs() < min && self.y.abs() < min && self.z.abs() < min
+        self.x().abs() < min && self.y().abs() < min && self.z().abs() < min
     }
 
     pub fn reflect(&self, normal: &Vec3) -> Vec3{
@@ -86,7 +88,7 @@ impl Vec3{
     }
 
     pub fn elementwise_mult(&self, rhs: &Vec3) -> Vec3{
-        Vec3::new(self.x*rhs.x, self.y*rhs.y, self.z*rhs.z)
+        Vec3::new(self.x()*rhs.x(), self.y()*rhs.y(), self.z()*rhs.z())
     }
 
     pub fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3{
@@ -98,27 +100,27 @@ impl Vec3{
 }
 
 //Operator overloading using impl_ops
-impl_op_ex_commutative!(+ |lhs: &f64, rhs: &Vec3| -> Vec3 { Vec3::new(rhs.x + lhs, rhs.y + lhs, rhs.z + lhs)});
-impl_op_ex!(+ |lhs: &Vec3, rhs: &Vec3| -> Vec3 { Vec3::new(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z)});
+impl_op_ex_commutative!(+ |lhs: &f64, rhs: &Vec3| -> Vec3 { Vec3::new(rhs.x() + lhs, rhs.y() + lhs, rhs.z() + lhs)});
+impl_op_ex!(+ |lhs: &Vec3, rhs: &Vec3| -> Vec3 { Vec3::new(lhs.x() + rhs.x(), lhs.y() + rhs.y(), lhs.z() + rhs.z())});
 
-impl_op_ex!(- |lhs: &f64, rhs: &Vec3| -> Vec3 { Vec3::new(lhs - rhs.x, lhs - rhs.y, lhs - rhs.z)});
-impl_op_ex!(- |lhs: &Vec3, rhs: &f64| -> Vec3 { Vec3::new(lhs.x - rhs, lhs.y - rhs, lhs.z - rhs)});
-impl_op_ex!(- |lhs: &Vec3, rhs: &Vec3| -> Vec3 { Vec3::new(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z)});
+impl_op_ex!(- |lhs: &f64, rhs: &Vec3| -> Vec3 { Vec3::new(lhs - rhs.x(), lhs - rhs.y(), lhs - rhs.z())});
+impl_op_ex!(- |lhs: &Vec3, rhs: &f64| -> Vec3 { Vec3::new(lhs.x() - rhs, lhs.y() - rhs, lhs.z() - rhs)});
+impl_op_ex!(- |lhs: &Vec3, rhs: &Vec3| -> Vec3 { Vec3::new(lhs.x() - rhs.x(), lhs.y() - rhs.y(), lhs.z() - rhs.z())});
 
-impl_op_ex_commutative!(* |lhs: &f64, rhs: &Vec3| -> Vec3 { Vec3::new(rhs.x * lhs, rhs.y * lhs, rhs.z * lhs)});
-impl_op_ex!(/ |lhs: &Vec3, rhs: &f64| -> Vec3 { Vec3::new(lhs.x / rhs, lhs.y / rhs, lhs.z / rhs)});
+impl_op_ex_commutative!(* |lhs: &f64, rhs: &Vec3| -> Vec3 { Vec3::new(rhs.x() * lhs, rhs.y() * lhs, rhs.z() * lhs)});
+impl_op_ex!(/ |lhs: &Vec3, rhs: &f64| -> Vec3 { Vec3::new(lhs.x() / rhs, lhs.y() / rhs, lhs.z() / rhs)});
 
 impl ops::Neg for Vec3{
     type Output = Vec3;
     fn neg(self) -> Vec3{
-        Vec3::new(-self.x, -self.y, -self.z)
+        Vec3::new(-self.x(), -self.y(), -self.z())
     }
 }
 
 impl ops::Neg for &Vec3{
     type Output = Vec3;
     fn neg(self) -> Vec3{
-        Vec3::new(-self.x, -self.y, -self.z)
+        Vec3::new(-self.x(), -self.y(), -self.z())
     }
 }
 
@@ -150,26 +152,26 @@ mod tests {
 
     #[test]
     fn test_new(){
-        let result = Vec3{x: 1.0, y: 2.0, z: 3.0};
+        let result = Vec3{arr:[1.0, 2.0, 3.0]};
         assert_eq!(Vec3::new(1.0,2.0,3.0), result);
     }
 
     #[test]
     fn test_x(){
-        let vec = Vec3{x: 1.0, y: 2.0, z: 3.0};
-        assert_eq!(vec.x, 1.0);
+        let vec =  Vec3{arr:[1.0, 2.0, 3.0]};
+        assert_eq!(vec.x(), 1.0);
     }
 
     #[test]
     fn test_y(){
-        let vec = Vec3{x: 1.0, y: 2.0, z: 3.0};
-        assert_eq!(vec.y, 2.0);
+        let vec = Vec3{arr:[1.0, 2.0, 3.0]};
+        assert_eq!(vec.y(), 2.0);
     }
 
     #[test]
     fn test_z(){
-        let vec = Vec3{x: 1.0, y: 2.0, z: 3.0};
-        assert_eq!(vec.z, 3.0);
+        let vec =Vec3{arr:[1.0, 2.0, 3.0]};
+        assert_eq!(vec.z(), 3.0);
     }
 
     #[test]
