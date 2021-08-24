@@ -76,6 +76,9 @@ impl BvhNode{
         let right: Box<dyn Traceable>;
         match object_span {
             1 => {
+                //On the slim chance object_span equals 1, simply clone
+                //the object. This stops us having to check for None in
+                //each child, and makes tree traversal smoother.
                 left = objects.remove(0);
                 right = left.clone();
             }
