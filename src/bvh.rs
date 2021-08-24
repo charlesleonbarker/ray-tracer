@@ -153,12 +153,36 @@ mod tests {
 
         //Case 2: Miss (due to timeout)
         let rec = aabb.hit(&r, 0.0, 9.9);
-        assert_eq!(rec, false)
+        assert_eq!(rec, false);
+
+        //Case 3: Miss (due to geometry)
+        let r = Ray::new(Vec3::new(-10.0, 10.01, 5.0), Vec3::new( 1.0, 0.0, 0.0));
+        let rec = aabb.hit(&r, 0.0, 100.0);
+        assert_eq!(rec, false);
+
+
+    }
+
+    #[test]
+    fn test_surrounding_box(){
+        
+        let min = Point3::new(0.0, 0.0, 0.0);
+        let max = Point3::new(10.0, 10.0, 10.0);
+        let aabb_a = Aabb::new(min, max);
+
+        let min = Point3::new(-1.0, 3.0, -2.0);
+        let max = Point3::new(9.0, 16.0, 10.0);
+        let aabb_b = Aabb::new(min, max);
+
+        let sb = Aabb::surrounding_box(aabb_a, aabb_b);
+
+        assert_eq!(sb.min(), Point3::new(-1.0, 0.0, -2.0));
+        assert_eq!(sb.max(), Point3::new(10.0, 16.0, 10.0));
 
 
     }
     #[test]
-    fn test_bvhNode_hit(){
+    fn test_bvhnode_hit(){
 
         let mut list = TraceableList::new();
         let r = Ray::new(Vec3::new(-10.0, 0.0, 0.0), Vec3::new( 1.0, 0.0, 0.0));
