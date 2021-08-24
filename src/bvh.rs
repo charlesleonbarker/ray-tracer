@@ -45,7 +45,7 @@ impl Aabb{
                 return false
             }
         }
-        return true
+        true
     }
 
     pub fn surrounding_box(box_0: Aabb, box_1: Aabb) -> Aabb{
@@ -249,4 +249,6 @@ mod tests {
         assert_eq!(rec.t, 3.0); 
         
     }
+
+    
 }
