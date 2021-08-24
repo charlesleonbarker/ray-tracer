@@ -140,6 +140,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn min(){
+        let min = Point3::new(0.0, -2.0, 1.0);
+        let max = Point3::new(10.0, 3.0, 4.0);
+        let aabb = Aabb::new(min, max);
+        assert_eq!(aabb.min(), Point3::new(0.0, -2.0, 1.0));
+    }
+
+    #[test]
+    fn max(){
+        let min = Point3::new(0.0, -2.0, 1.0);
+        let max = Point3::new(10.0, 3.0, 4.0);
+        let aabb = Aabb::new(min, max);
+        assert_eq!(aabb.max(), Point3::new(10.0, 3.0, 4.0));
+    }
+
+    #[test]
     fn test_aabb_hit(){
 
         let min = Point3::new(0.0, 0.0, 0.0);
