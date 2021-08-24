@@ -45,7 +45,7 @@ impl<M> Hit for Sphere<M> where M: Scatter{
 
     fn bounding_box(&self) -> Option<Aabb> {
         let output_box = Aabb::new(self.center - Vec3::new(self.radius, self.radius, self.radius),
-                               self.center + Vec3::new(self.radius, self.radius, self.radius));
+                                   self.center + Vec3::new(self.radius, self.radius, self.radius));
         Some(output_box)
     }
 }
@@ -127,4 +127,15 @@ mod tests {
         assert_eq!(rec.p(), Point3::new(0.0, -5.0, 0.0));
         assert_eq!(rec.front_face(), false);
     }
+
+    #[test]
+    fn test_bounding_box(){
+        let center = Vec3::new(0.0, -3.0, 2.0);
+        let radius = 5.0;
+        let mat = Lambertian::default();
+        let s = Sphere::new(center, radius, mat);
+        let bb = s.bounding_box().unwrap();
+        assert_eq!(bb.min(), Point3::new(-5.0, -8.0, -3.0));
+        assert_eq!(bb.max(), Point3::new(5.0, 2.0, 7.0));
+    } 
 }
