@@ -1,6 +1,7 @@
 use crate::vec::*;
 use crate::ray::*;
 use crate::bvh::*;
+use crate::material::*;
 use std::clone;
 use std::ops::Index;
 use core::cmp::Ordering;
@@ -14,6 +15,17 @@ pub struct HitRecord<'a>{
     pub mat: &'a dyn Scatter
 }
 
+pub struct TraceableList{
+    list: Vec<Box<dyn Traceable>>
+}
+
+pub enum TraceResult{
+    Missed,
+    Absorbed(Color),
+    Scattered((Color, Ray))
+}
+
+
 pub trait Traceable: Hit{
     fn box_clone(&self) -> Box<dyn Traceable>;
     fn trace(&self, r: &Ray, t_min: f64, t_max: f64) -> TraceResult;
@@ -26,25 +38,15 @@ pub trait Traceable: Hit{
         
         if let Some(hit_rec) = self.hit(r, t_min, t_max) {
             if let Some((attenuation, scattered)) = hit_rec.mat.scatter(r, &hit_rec){
-                TraceResult::Scattered((attenuation, scattered))
+                TraceResult::Scattered((hit_rec.mat.emit() + attenuation, scattered))
             } else{
-                TraceResult::Absorbed
+                TraceResult::Absorbed(hit_rec.mat.emit())
             }
         } else{
             TraceResult::Missed
         }
     }
  }
-
-pub struct TraceableList{
-    list: Vec<Box<dyn Traceable>>
-}
-
-pub enum TraceResult{
-    Missed,
-    Absorbed,
-    Scattered((Color, Ray))
-}
 
 
 impl<'a> HitRecord<'a>{
@@ -182,9 +184,6 @@ pub trait Hit{
     fn bounding_box(&self) -> Option<Aabb>;
 }
 
-pub trait Scatter{
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
-}
 
 #[cfg(test)]
 mod tests {

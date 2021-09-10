@@ -20,6 +20,11 @@ pub struct Dielectric{
     index_of_refraction :f64,
 }
 
+#[derive (Copy, Clone)]
+pub struct DiffuseLights{
+    color: Color
+}
+
 
 impl Lambertian{
     pub fn new(alb: Color) -> Lambertian{
@@ -114,6 +119,32 @@ impl Scatter for Dielectric{
     }
 }
 
+impl DiffuseLights{
+    pub fn new(color: Color) -> DiffuseLights{
+        DiffuseLights{color}
+    }
+}
+
+impl Scatter for DiffuseLights{
+    fn scatter(&self, _: &Ray, _: &HitRecord) -> Option<(Color, Ray)>{
+        None
+    }
+
+    fn emit(&self) -> Color{
+        self.color
+    }
+
+}
+
+
+
+pub trait Scatter{
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
+    fn emit(&self) -> Color{
+        Color::new(0.0, 0.0, 0.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -147,6 +178,14 @@ mod tests {
     }
 
     #[test]
+    fn test_lambertian_emit(){
+        let albedo = Color::new(0.7, 0.6, 0.5);
+        let mat = Lambertian::new(albedo);
+        let emission= mat.emit();
+        assert_eq!(emission, Color::new(0.0, 0.0, 0.0));
+    }
+
+    #[test]
     fn test_metal_deterministic_scatter(){
 
         //Initialisation
@@ -168,6 +207,34 @@ mod tests {
         //Case 2: Ray is absorbed
         let scatter_result = mat.deterministic_scatter(&r, &rec, Vec3::new(1.0, 0.0, 0.0));
         assert!(scatter_result.is_none());
+    }
+
+    #[test]
+    fn test_metal_emit(){
+        let albedo = Color::new(0.7, 0.6, 0.5);
+        let mat = Metal::new(albedo, 20.0);
+        let emission= mat.emit();
+        assert_eq!(emission, Color::new(0.0, 0.0, 0.0));
+    }
+
+
+    #[test]
+    fn test_diffuse_light_scatter(){
+        let mat = DiffuseLights::new(Color::new(0.7, 0.6, 0.5));
+        let s = Box::new(Sphere::new(Point3::new(1.0,0.0,0.0), 1.0, mat));
+        let r = Ray::new(Point3::new(-10.0, -10.0, 0.0), Vec3::new( 1.0, 1.0, 0.0));
+        let hit = s.hit(&r, 0.0, 100.0);
+        let rec = hit.unwrap();
+
+        let scatter_result = mat.scatter(&r, &rec);
+        assert!(scatter_result.is_none());
+    }
+
+    #[test]
+    fn test_diffuse_light_emit(){
+        let mat = DiffuseLights::new(Color::new(0.7, 0.6, 0.5));
+        let emission= mat.emit();
+        assert_eq!(emission, Color::new(0.7, 0.6, 0.5));
     }
 
     #[test]

@@ -24,7 +24,7 @@ use std::f64::INFINITY;
 use std::fs::OpenOptions;
 use std::io::Write;
 
-pub fn ray_color(r: &Ray, world: &dyn Traceable, depth: i32) -> Color {
+pub fn ray_color(r: &Ray, background: Color, world: &dyn Traceable, depth: i32) -> Color {
 
     //If we've exceeded the ray bounce limit, no more light is gathered.
     if depth <= 0{
@@ -33,23 +33,21 @@ pub fn ray_color(r: &Ray, world: &dyn Traceable, depth: i32) -> Color {
 
     let result = world.trace(r, 0.001, INFINITY);
     match result{
-        TraceResult::Scattered((attenuation, scattered)) => attenuation.elementwise_mult(&ray_color(&scattered, world, depth-1)),
-        TraceResult::Absorbed => Color::new(0.0, 0.0, 0.0),
-        TraceResult::Missed =>{
-            let unit_dir = r.direction().unit_vector();
-            let t = 0.5*(unit_dir.y() + 1.0);
-            (1.0-t)*Color::new(1.0, 1.0, 1.0) + t*Color::new(0.5, 0.7, 1.0)
-        }         
+        TraceResult::Scattered((attenuation, scattered)) => attenuation.elementwise_mult(&ray_color(&scattered, background, world, depth-1)),
+        TraceResult::Absorbed(emitted) => emitted,
+        TraceResult::Missed => background      
     }
 }
 
 fn main(){
 
     //Image
-    const IMAGE_WIDTH:i32 = 800;
+    const IMAGE_WIDTH:i32 = 400;
     const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 100;
+    const SAMPLES_PER_PIXEL: i32 = 50;
     const MAX_DEPTH: i32 = 50;
+
+    let background = Color::new(0.7, 0.8, 1.0);
 
     //World
     let mut world = TraceableList::new();
@@ -126,7 +124,7 @@ fn main(){
                 let u = (rand_double(0.0, 1.0) + i as f64)/(IMAGE_WIDTH as f64 - 1.0);
                 let v = (rand_double(0.0, 1.0) + (IMAGE_HEIGHT - j) as f64)/((IMAGE_HEIGHT - 1) as f64);
                 let r = cam.get_ray(u,v);
-                pixel_color = pixel_color + ray_color(&r, &world, MAX_DEPTH);
+                pixel_color = pixel_color + ray_color(&r, background, &world, MAX_DEPTH);
             }
             pixel_color.write_color(&mut file, SAMPLES_PER_PIXEL);
         }

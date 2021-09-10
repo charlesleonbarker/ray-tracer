@@ -2,6 +2,7 @@ use crate::vec::*;
 use crate::ray::*;
 use crate::traceable::*;
 use crate::bvh::*;
+use crate::material::*;
 
 #[derive (Copy, Clone)]
 pub struct Sphere<M> where M: Scatter{
