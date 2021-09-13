@@ -11,6 +11,9 @@ mod camera;
 mod material;
 mod util;
 mod bvh;
+mod rect;
+
+use bvh::BvhNode;
 
 use crate::vec::*;
 use crate::ray::*;
@@ -18,6 +21,7 @@ use crate::sphere::*;
 use crate::traceable::*;
 use crate::camera::*;
 use crate::material::*;
+use crate::rect::*;
 use crate::util::*;
 
 use std::f64::INFINITY;
@@ -39,17 +43,7 @@ pub fn ray_color(r: &Ray, background: Color, world: &dyn Traceable, depth: i32) 
     }
 }
 
-fn main(){
-
-    //Image
-    const IMAGE_WIDTH:i32 = 400;
-    const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 50;
-    const MAX_DEPTH: i32 = 50;
-
-    let background = Color::new(0.7, 0.8, 1.0);
-
-    //World
+pub fn sphere_world() -> TraceableList{
     let mut world = TraceableList::new();
     let mat_ground = Lambertian::new(Color::new(0.5, 0.5, 0.5));
     let ground = Box::new(Sphere::new(Point3::new(0.0,-1000.0,0.0), 1000.0, mat_ground));
@@ -90,12 +84,62 @@ fn main(){
     world.add(sphere_center);
     world.add(sphere_left);
     world.add(sphere_right);
+    world
+}
 
-    let world = world.to_Bvh();
+pub fn light_test() -> TraceableList{
+    let mut world = TraceableList::new();
+    let mat = Lambertian::new(Color::new(0.4, 0.2, 0.1));
+    let ground = Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, mat));
+    let sphere = Box::new(Sphere::new(Point3::new(0.0, 2.0, 0.0), 2.0, mat)); 
+
+    let diff_light = DiffuseLights::new(Color::new(4.0,4.0,4.0));
+    let rect = Box::new(Rect::new(RectAxes::XY, 3.0, 5.0, 1.0, 3.0, -2.0, diff_light));
+    world.add(ground);
+    world.add(sphere);
+    world.add(rect);
+    world
+}
+
+fn main(){
+
+    //Image
+    const IMAGE_WIDTH:i32 = 400;
+    const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
+    const SAMPLES_PER_PIXEL: i32 = 8000;
+    const MAX_DEPTH: i32 = 50;
+
+
+
+    let background: Color;
+    let world: TraceableList;
+    let look_from: Vec3;
+    let look_at: Vec3;
+
+    let scene = 1;
+
+    match scene{
+        0 => {
+            background = Color::new(0.7, 0.8, 1.0);
+            world = sphere_world();
+            look_from = Point3::new(13.0, 2.0, 3.0);
+            look_at = Point3::new(0.0, 0.0, 0.0);
+        }
+
+        1 => {
+            background = Color::new(0.0, 0.0, 0.0);
+            world = light_test();
+            look_from = Point3::new(26.0, 3.0, 6.0);
+            look_at = Point3::new(0.0, 2.0, 0.0);
+        }
+
+        _ => panic!("Scene ID invalid.")
+    }
+    
+    //let world = world.to_Bvh();
 
     //Camera
-    let look_from = Point3::new(13.0, 2.0, 3.0);
-    let look_at = Point3::new(0.0, 0.0, 0.0);
+
     let v_up = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 10.0;
     let aperture = 0.1;

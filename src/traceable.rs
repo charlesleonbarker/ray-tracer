@@ -15,6 +15,7 @@ pub struct HitRecord<'a>{
     pub mat: &'a dyn Scatter
 }
 
+#[derive (Default)]
 pub struct TraceableList{
     list: Vec<Box<dyn Traceable>>
 }
