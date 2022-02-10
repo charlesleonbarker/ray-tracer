@@ -67,7 +67,7 @@ impl<M> Hit for Rect<M> where M: Scatter{
         if x < self.corner(0) || x > self.corner(1) || y < self.corner(2) || y > self.corner(3){
             return None;
         }
-        let rec = HitRecord::new(r.at(t), self.outward_normal(), t, *r, &self.mat);
+        let rec = HitRecord::new(r.at(t), self.outward_normal(), t, *r, &self.mat, Vec3::default());
         Some(rec)
     }
 

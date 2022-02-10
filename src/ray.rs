@@ -1,8 +1,8 @@
 use crate::vec::*;
 #[derive (Copy, Clone, Default, PartialEq, Debug)]
 pub struct Ray{
-    orig: Point3,
-    dir: Vec3,
+    pub orig: Point3,
+    pub dir: Vec3,
 }
 
 impl Ray{
@@ -21,6 +21,16 @@ impl Ray{
     pub fn at(&self, t:f64) -> Vec3{
         self.orig + self.dir*t
     }
+
+    pub fn offset_origin(&self,  p_err: Vec3, norm: Vec3) -> Ray{
+        let d = Vec3::dot(&norm.abs(), &p_err);
+        let mut offset = d * norm;
+        if Vec3::dot(&self.dir, &norm) < 0.0{
+            offset = -offset;
+        }
+        Ray::new(self.orig + offset, self.dir)
+    }
+    
 
 }
 

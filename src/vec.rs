@@ -1,4 +1,6 @@
 use std::ops;
+use core::cmp::Ordering;
+use std::ops::{Index, IndexMut};
 use crate::*;
 
 #[derive (PartialEq, Debug, Copy, Clone, Default)]
@@ -68,6 +70,28 @@ impl Vec3{
         lhs.x()*rhs.x() + lhs.y()*rhs.y() + lhs.z()*rhs.z()
     }
 
+    pub fn sort_by<F>(&mut self, compare: F)
+    where
+        F: FnMut(&f64, &f64) -> Ordering,
+    {
+        self.arr.sort_by(compare);
+    }
+
+    pub fn max_dim(&self) -> usize{
+        self.arr.iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.abs().partial_cmp(&b.abs())
+                .expect("Tried to compare a NaN"))
+                .map(|(index, _)| index)
+                .unwrap()
+    }
+
+    pub fn permute(&mut self, i: usize, j: usize){
+        let temp = self.arr[i];
+        self.arr[i] = self.arr[j];
+        self.arr[j] = temp;
+    }
+
     pub fn unit_vector(&self) -> Vec3{
         self/(self.length())
     }
@@ -97,6 +121,20 @@ impl Vec3{
         let r_out_parallel = -(1.0 - r_out_perp.length_squared()).abs().sqrt() * n;
         r_out_perp + r_out_parallel
     }
+
+    //Applies the absolute value function to vector components
+    pub fn abs(&self) -> Vec3{
+        Vec3::new(self.x().abs(), self.y().abs(), self.z().abs())
+    }
+
+    pub fn offset_origin(&self, dir: Point3,  p_err: Vec3, norm: Vec3) -> Point3{
+        let d = Vec3::dot(&norm.abs(), &p_err);
+        let mut offset = d*p_err;
+        if Vec3::dot(&dir, &norm) < 0.0{
+            offset = -offset;
+        }
+        self + offset
+    }
 }
 
 //Operator overloading using impl_ops
@@ -123,6 +161,20 @@ impl ops::Neg for &Vec3{
         Vec3::new(-self.x(), -self.y(), -self.z())
     }
 }
+
+impl Index<usize> for Vec3{
+    type Output = f64;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.arr[index]
+    }
+}
+
+impl IndexMut<usize> for Vec3{
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.arr[index]
+    }
+}
+
 
 impl Color{
 
@@ -303,5 +355,27 @@ mod tests {
         let normal = Vec3::new(1.0, 0.0, 0.0);
         let reflective_index = 1.5;
         assert_eq!(Vec3::refract(&vec, &normal, reflective_index), Vec3::new(-(1.0-0.75f64.powi(2)).sqrt(), 0.75, 0.0));
+    }
+
+    #[test]
+    fn test_permute(){
+        let mut vec = Vec3::new(0.1, 0.2, 0.3);
+        vec.permute(0, 2);
+        assert_eq!(vec, Vec3::new(0.3, 0.2, 0.1));
+
+        vec.permute(1, 2);
+        assert_eq!(vec, Vec3::new(0.3, 0.1, 0.2));
+
+        vec.permute(1, 1);
+        assert_eq!(vec, Vec3::new(0.3, 0.1, 0.2));
+    }
+
+    #[test]
+    fn test_max_dim(){
+        let vec = Vec3::new(0.4, 0.3, 0.2);
+        assert_eq!(vec.max_dim(), 0);
+
+        let vec = Vec3::new(8.0, -9.0, 0.0);
+        assert_eq!(vec.max_dim(), 1);
     }
 }

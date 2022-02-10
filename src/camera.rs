@@ -49,7 +49,7 @@ impl Camera{
         let rd = self.lens_radius * Vec3::rand_in_unit_disk();
         let offset = self.orientation.u() * rd.x() + self.orientation.v() * rd.y();
 
-        Ray::new(self.origin + offset, self.lower_left_corner + s*self.horizontal + t*self.vertical - self.origin - offset)
+        Ray::new(self.origin + offset, (self.lower_left_corner + s*self.horizontal + t*self.vertical - self.origin - offset).unit_vector())
     }
 }
 

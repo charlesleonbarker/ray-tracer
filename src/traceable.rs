@@ -1,10 +1,14 @@
+extern crate fastrand;
+
 use crate::vec::*;
 use crate::ray::*;
 use crate::bvh::*;
 use crate::material::*;
+use crate::triangle::*;
 use std::clone;
 use std::ops::Index;
 use core::cmp::Ordering;
+use std::convert::TryFrom;
 
 #[derive (Copy, Clone)]
 pub struct HitRecord<'a>{
@@ -12,7 +16,8 @@ pub struct HitRecord<'a>{
     pub normal: Vec3,
     pub t: f64,
     pub front_face: bool,
-    pub mat: &'a dyn Scatter
+    pub mat: &'a dyn Scatter,
+    pub p_err: Vec3,
 }
 
 #[derive (Default)]
@@ -36,7 +41,6 @@ pub trait Traceable: Hit{
          Box::new((*self).clone())
      }
      fn trace(&self, r: &Ray, t_min: f64, t_max: f64) -> TraceResult{
-        
         if let Some(hit_rec) = self.hit(r, t_min, t_max) {
             if let Some((attenuation, scattered)) = hit_rec.mat.scatter(r, &hit_rec){
                 TraceResult::Scattered((hit_rec.mat.emit() + attenuation, scattered))
@@ -51,14 +55,14 @@ pub trait Traceable: Hit{
 
 
 impl<'a> HitRecord<'a>{
-    pub fn new(p: Point3, normal: Vec3, t: f64, r: Ray, mat: &'a dyn Scatter) -> HitRecord<'a>{
-        let mut rec = HitRecord{p, normal, t, front_face: true, mat};
+    pub fn new(p: Point3, normal: Vec3, t: f64, r: Ray, mat: &'a dyn Scatter, p_err: Vec3) -> HitRecord<'a>{
+        let mut rec = HitRecord{p, normal, t, front_face: true, mat, p_err};
         rec.set_face_normal(&r, &normal);
         rec      
     }
 
     pub fn from_mat(mat: &'a dyn Scatter) -> HitRecord<'a>{
-        HitRecord::new(Point3::default(), Vec3::default(), 0.0, Ray::default(), mat)
+        HitRecord::new(Point3::default(), Vec3::default(), 0.0, Ray::default(), mat, Vec3::default())
     }
 
     pub fn set_face_normal(&mut self, r: &Ray, outward_normal: &Vec3){
@@ -128,6 +132,41 @@ impl TraceableList{
 
     pub fn to_Bvh(self) -> BvhNode{
         BvhNode::new(self)
+    }
+
+    pub fn add_obj(&mut self, models: Vec<tobj::Model>, mut materials_opt: Option<Vec<tobj::Material>>){
+        for  m in models.iter(){
+           //if m.name == "wheel_fr_Circle.050_MAIN"{
+                let mesh = &m.mesh;
+                let pos = &mesh.positions;
+                let norms = &mesh.normals;
+                let model_color:Color;
+                match &materials_opt{
+                    Some(mat) =>{
+                        let mat_id = mesh.material_id.unwrap();
+                        model_color = Color::new(mat[mat_id].diffuse[0] as f64, mat[mat_id].diffuse[1] as f64, mat[mat_id].diffuse[2] as f64);
+                    }
+                    None =>{
+                        model_color = Vec3::new(0.5, 0.5, 0.5);
+                    }
+                }
+                for face_indices in mesh.indices.chunks(3){
+                    let mut tri_vert = [Point3::default();3];
+                    let mut tri_norm = [Vec3::default(); 3];
+                    for vertex in 0..3{
+                        tri_vert[vertex] = Point3::new(pos[usize::try_from(face_indices[vertex]*3    ).unwrap()].into(),
+                                                    pos[usize::try_from(face_indices[vertex]*3 + 1).unwrap()].into(),
+                                                    pos[usize::try_from(face_indices[vertex]*3 + 2).unwrap()].into());
+                        tri_norm[vertex] = Vec3::new(norms[usize::try_from(face_indices[vertex]*3    ).unwrap()].into(),
+                                                    norms[usize::try_from(face_indices[vertex]*3 + 1).unwrap()].into(),
+                                                    norms[usize::try_from(face_indices[vertex]*3 + 2).unwrap()].into());
+                    }
+
+                    let tri = Triangle::new(tri_vert, tri_norm, Lambertian::new(model_color));
+                    self.add(Box::new(tri));
+                }
+            //}
+        }
     }
 }
 
@@ -287,4 +326,25 @@ mod tests {
         let hit = list.hit(&r, t_min, t_max);
         assert!(hit.is_none());
     }
+
+    // #[test]
+    // fn add_obj(){
+    //     let mut mesh_1 = tobj::Mesh::default();
+    //     mesh_1.positions = vec!(-2.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 2.0, 0.0,
+    //                             -2.0, 0.0, 5.0, 2.0, 0.0, 5.0, 0.0, 2.0, 5.0,
+    //                             -2.0, 0.0, 8.0, 2.0, 0.0, 8.0, 0.0, 2.0, 8.0);
+
+    //     mesh_2.positions = vec!(-2.0, 0.0, 5.0, 2.0, 0.0, 5.0, 0.0, 2.0, 5.0);
+
+    //     let test_1 = tobj::Model::new(mesh_1, "test_1".to_string());
+
+    //     let mesh_2 = tobj::Mesh::default();
+    //     let test_2 = tobj::Model::new(mesh_2, "test_2".to_string());
+
+    //     let mesh_3 = tobj::Mesh::default();
+    //     let test_3 = tobj::Model::new(mesh_3, "test_3".to_string());
+
+        
+
+    // }
 }

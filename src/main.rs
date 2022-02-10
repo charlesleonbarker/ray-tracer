@@ -2,6 +2,7 @@
 
 extern crate impl_ops;
 extern crate fastrand;
+extern crate tobj;
 
 mod vec;
 mod ray;
@@ -12,6 +13,7 @@ mod material;
 mod util;
 mod bvh;
 mod rect;
+mod triangle;
 
 use bvh::BvhNode;
 
@@ -23,6 +25,7 @@ use crate::camera::*;
 use crate::material::*;
 use crate::rect::*;
 use crate::util::*;
+use crate::triangle::*;
 
 use std::f64::INFINITY;
 use std::fs::OpenOptions;
@@ -91,13 +94,92 @@ pub fn light_test() -> TraceableList{
     let mut world = TraceableList::new();
     let mat = Lambertian::new(Color::new(0.4, 0.2, 0.1));
     let ground = Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, mat));
-    let sphere = Box::new(Sphere::new(Point3::new(0.0, 2.0, 0.0), 2.0, mat)); 
+    let sphere = Box::new(Sphere::new(Point3::new(0.0, 2.0, 0.0), 2.0, Lambertian::new(Color::new(0.8, 0.8, 0.8)))); 
 
     let diff_light = DiffuseLights::new(Color::new(4.0,4.0,4.0));
-    let rect = Box::new(Rect::new(RectAxes::XY, 3.0, 5.0, 1.0, 3.0, -2.0, diff_light));
+    let rect = Box::new(Rect::new(RectAxes::XY, -1.0, 2.0, 1.0, 3.0, 4.0, diff_light));
     world.add(ground);
     world.add(sphere);
-    world.add(rect);
+    //world.add(rect);
+    world
+}
+
+pub fn triangle_test() -> TraceableList{
+    let mut world = TraceableList::new();
+    let mat = Lambertian::new(Color::new(0.4, 0.2, 0.1));
+    let ground = Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, mat));
+ 
+    let mat = Lambertian::new(Vec3::new(0.8, 0.8, 0.8));
+    let v0 = Vec3::new(-2.0, 0.1, 0.0);
+    let v1 = Vec3::new(2.0, 0.1, 0.0);
+    let v2 = Vec3::new(0.0, 2.1, 0.0);
+    let norms = [Vec3::new(0.0, 0.0, 1.0); 3];
+    let tri = Box::new(Triangle::new([v0, v1, v2], norms, mat));
+    world.add(ground);
+    world.add(tri);
+    world
+}
+
+pub fn obj_test() -> TraceableList{
+    let mut world = TraceableList::new(); 
+    let mut mesh = TraceableList::new(); 
+    let mat = Lambertian::new(Color::new(0.4, 0.2, 0.1));
+    let ground = Box::new(Sphere::new(Point3::new(0.0, -1050.0, 0.0), 1000.0, mat));
+    let (mut models, materials) = import_obj("/Users/simonpapworth/Downloads/helicopter.obj");
+    let diff_light = DiffuseLights::new(Color::new(4.0,4.0,4.0));
+    let rect = Box::new(Rect::new(RectAxes::XY, -4.0, -2.0, 1.0, 8.0, 4.0, diff_light));
+    mesh.add_obj(models, materials);
+    world.add(ground);
+    world.add(Box::new(mesh.to_Bvh()));
+    world
+}
+
+pub fn mesh_test() -> TraceableList{
+    let mut world = TraceableList::new(); 
+    let mut mesh_1 = tobj::Mesh::default();
+    let mut mesh_2 = tobj::Mesh::default();
+    let mut mesh_3 = tobj::Mesh::default();
+
+    mesh_1.positions = vec!(-2.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0,
+                            0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 1.0, 1.0, 0.0,
+                            2.0, 0.0, 0.0, 4.0, 0.0, 0.0, 3.0, 1.0, 0.0);
+                            
+    mesh_1.normals = vec!(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+                          0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+                          0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0);
+
+    mesh_1.indices = vec!(0, 1, 2, 3, 4, 5, 6, 7, 8);
+
+
+    mesh_2.positions = vec!(-2.0, 1.0, 0.0, 0.0, 1.0, 0.0, -1.0, 2.0, 0.0,
+                            0.0, 1.0, 0.0, 2.0, 1.0, 0.0, 1.0, 2.0, 0.0,
+                            2.0, 1.0, 0.0, 4.0, 1.0, 0.0, 3.0, 2.0, 0.0);
+
+    mesh_2.normals = vec!(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+                        0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+                        0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0);
+
+    mesh_2.indices = vec!(0, 1, 2, 3, 4, 5, 6, 7, 8);
+                    
+
+    mesh_3.positions = vec!(-2.0, 2.0, 0.0, 0.0, 2.0, 0.0, -1.0, 3.0, 0.0,
+                            0.0, 2.0, 0.0, 2.0, 2.0, 0.0, 1.0, 3.0, 0.0,
+                            2.0, 2.0, 0.0, 4.0, 2.0, 0.0, 3.0, 3.0, 0.0);
+
+    mesh_3.normals = vec!(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+                          0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+                          0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0);
+
+    mesh_3.indices = vec!(0, 1, 2, 3, 4, 5, 6, 7, 8);
+
+
+    let test_1 = tobj::Model::new(mesh_1, "test_1".to_string());
+    let test_2 = tobj::Model::new(mesh_2, "test_1".to_string());
+    let test_3 = tobj::Model::new(mesh_3, "test_1".to_string());
+
+
+    let test = vec!(test_1, test_2, test_3);
+    world.add_obj(test, None);
     world
 }
 
@@ -106,7 +188,7 @@ fn main(){
     //Image
     const IMAGE_WIDTH:i32 = 400;
     const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 8000;
+    const SAMPLES_PER_PIXEL: i32 = 200;
     const MAX_DEPTH: i32 = 50;
 
 
@@ -116,7 +198,7 @@ fn main(){
     let look_from: Vec3;
     let look_at: Vec3;
 
-    let scene = 1;
+    let scene = 3;
 
     match scene{
         0 => {
@@ -127,10 +209,33 @@ fn main(){
         }
 
         1 => {
-            background = Color::new(0.0, 0.0, 0.0);
+            background = Color::new(0.9, 0.9, 0.9);
             world = light_test();
             look_from = Point3::new(26.0, 3.0, 6.0);
             look_at = Point3::new(0.0, 2.0, 0.0);
+        }
+
+        2 =>{
+            background = Color::new(0.9, 0.9, 0.9);
+            world = triangle_test();
+            look_from = Point3::new(0.0, 2.0, 26.0);
+            look_at = Point3::new(0.0, 0.0, 0.0);
+        }
+
+        3 =>{
+            background = Color::new(0.9, 0.9, 0.9);
+            world = obj_test();
+            look_from = Point3::new(-40.0, 10.0, 40.0);
+            //look_from = Point3::new(0.8, 0.2, 1.0);
+            look_at = Point3::new(0.0, 0.0, 0.0);
+        }
+
+        4 =>{
+            background = Color::new(0.9, 0.9, 0.9);
+            world = mesh_test();
+            look_from = Point3::new(26.0, 10.0, 10.0);
+            //look_from = Point3::new(0.8, 0.2, 1.0);
+            look_at = Point3::new(0.0, 0.0, 0.0);
         }
 
         _ => panic!("Scene ID invalid.")
@@ -142,7 +247,7 @@ fn main(){
 
     let v_up = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 10.0;
-    let aperture = 0.1;
+    let aperture = 0.0;
     let cam = Camera::new(look_from, look_at, v_up, 20.0, ASPECT_RATIO, aperture, dist_to_focus);
 
     //Render

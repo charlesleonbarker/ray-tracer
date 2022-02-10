@@ -3,7 +3,7 @@ use crate::ray::*;
 use crate::traceable::*;
 use std::cmp::Ordering;
 
-#[derive (Debug, Copy, Clone, Default)]
+#[derive (Debug, Copy, Clone, Default, PartialEq)]
 
 pub struct Aabb{
     min: Point3,

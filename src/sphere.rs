@@ -39,7 +39,7 @@ impl<M> Hit for Sphere<M> where M: Scatter{
             let t = root;
             let p = r.at(t);
             let outward_normal = (p - self.center)/self.radius;
-            let new_rec = HitRecord::new(p, outward_normal, root, *r, self);
+            let new_rec = HitRecord::new(p, outward_normal, root, *r, &self.material, Vec3::default());
             Some(new_rec)
         }
     }
@@ -48,18 +48,6 @@ impl<M> Hit for Sphere<M> where M: Scatter{
         let output_box = Aabb::new(self.center - Vec3::new(self.radius, self.radius, self.radius),
                                    self.center + Vec3::new(self.radius, self.radius, self.radius));
         Some(output_box)
-    }
-}
-
-impl<M> Scatter for Sphere<M> where M: Scatter{
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>{
-        let result= self.material.scatter(r_in, rec);
-        if result.is_some(){
-            let (attenuation, scattered) = result.unwrap();
-            Some((attenuation, scattered))
-        } else{
-            None
-        }
     }
 }
 

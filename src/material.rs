@@ -3,24 +3,24 @@ use crate::ray::*;
 use crate::traceable::*;
 use crate::util::*;
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq)]
 pub struct Lambertian{
     pub albedo: Color
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq)]
 pub struct Metal{
     albedo: Color,
     fuzz: f64
 }
 
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq)]
 pub struct Dielectric{
     index_of_refraction :f64,
 }
 
-#[derive (Copy, Clone)]
+#[derive(Default, Clone, Copy, PartialEq)]
 pub struct DiffuseLights{
     color: Color
 }
@@ -46,8 +46,10 @@ impl Lambertian{
 
 impl Scatter for Lambertian{
     fn scatter(&self, _: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>{
+
         let reflect_dir = Vec3::rand_unit_vec();
         self.deterministic_scatter( rec, reflect_dir)
+
     }
 }
 
