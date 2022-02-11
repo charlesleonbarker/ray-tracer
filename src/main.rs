@@ -3,6 +3,7 @@
 extern crate impl_ops;
 extern crate fastrand;
 extern crate tobj;
+extern crate num_cpus;
 
 mod vec;
 mod ray;
@@ -14,22 +15,96 @@ mod util;
 mod bvh;
 mod rect;
 mod triangle;
-
-use bvh::BvhNode;
+mod scenes;
 
 use crate::vec::*;
 use crate::ray::*;
-use crate::sphere::*;
 use crate::traceable::*;
 use crate::camera::*;
-use crate::material::*;
-use crate::rect::*;
 use crate::util::*;
-use crate::triangle::*;
 
 use std::f64::INFINITY;
+use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::thread;
+use std::thread::JoinHandle;
+
+#[derive (Copy, Clone)]
+pub struct ImageData {
+    pub image_width: i32,
+    pub image_height:i32,
+    pub samples_per_pixel: i32,
+    pub max_depth: i32
+}
+
+#[derive (Clone)]
+pub struct SceneData<T: Traceable>{
+    pub world: T,
+    pub background: Color,
+    pub cam: Camera
+}
+
+#[derive (Clone)]
+pub struct SharedData{
+    pub pixel_colors: Vec<Color>,
+    pub current_calculations: i64,
+    pub total_calculations: i64,
+    pub progress: i64,
+}
+
+fn main(){
+
+    //Scene
+    let (world, background, look_from, look_at) = scenes::triangle_test();
+    //let world = world.to_Bvh();
+
+    //Image
+    let aspect_ratio = 3.0/2.0;
+    let image_width = 200;
+    let image_height=  ((image_width as f64)/aspect_ratio) as i32;
+    let samples_per_pixel = 100;
+    let max_depth=  5;
+
+    //Camera
+    let v_up = Vec3::new(0.0, 1.0, 0.0);
+    let dist_to_focus = 10.0;
+    let aperture = 0.0;
+    let cam = Camera::new(look_from, look_at, v_up, 20.0, aspect_ratio, aperture, dist_to_focus);
+
+    //Render
+    let path = "results.ppm";
+    let mut file = initialise_file(path, image_width, image_height);
+   
+    //Shared data
+    let num_threads = (num_cpus::get()) as i32;
+    let samples = samples_per_pixel / num_threads;
+    let pixel_colors = vec![Color::new(0.0,0.0,0.0); (image_width * image_height) as usize];
+    let current_calculations = 0;
+    let total_calculations = (image_height * image_width * samples_per_pixel) as i64;
+    let progress = 0;
+    
+    //Package data
+    let shared_data = Arc::new(Mutex::new(SharedData {pixel_colors, current_calculations, total_calculations, progress }));
+    let image_data = ImageData { image_width, image_height, samples_per_pixel, max_depth };
+    let scene_data = Arc::new(SceneData { world, background, cam });
+
+    //Threading
+    let handles = initialise_threads(image_data.clone(), Arc::clone(&scene_data), samples, Arc::clone(&shared_data), num_threads);
+    let main_thread_samples = samples_per_pixel - samples * (num_threads - 1);
+    iterate_image(image_data.clone(), Arc::clone(&scene_data), main_thread_samples, Arc::clone(&shared_data));
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    //Write to file
+    let unlocked_data = shared_data.lock().unwrap();
+    for pixel in unlocked_data.pixel_colors.iter() {
+        pixel.write_color(&mut file, samples_per_pixel);
+    }
+}
 
 pub fn ray_color(r: &Ray, background: Color, world: &dyn Traceable, depth: i32) -> Color {
 
@@ -46,238 +121,66 @@ pub fn ray_color(r: &Ray, background: Color, world: &dyn Traceable, depth: i32) 
     }
 }
 
-pub fn sphere_world() -> TraceableList{
-    let mut world = TraceableList::new();
-    let mat_ground = Lambertian::new(Color::new(0.5, 0.5, 0.5));
-    let ground = Box::new(Sphere::new(Point3::new(0.0,-1000.0,0.0), 1000.0, mat_ground));
-    world.add(ground);
-
-    for a in -11..12{
-        for b in -11..12{
-            let choose_mat = rand_double(0.0, 1.0);
-            let center = Point3::new(a as f64 + 0.9*rand_double(0.0, 1.0), 0.2, b as f64 + 0.9*rand_double(0.0, 1.0));
-
-            if choose_mat < 0.6{
-                let albedo = Color::rand(0.0, 1.0).elementwise_mult(&Color::rand(0.0, 1.0));
-                let sphere_material = Lambertian::new(albedo);
-                let sphere = Box::new(Sphere::new(center, 0.2, sphere_material));
-                world.add(sphere);
-            } else if choose_mat < 0.9{
-                let albedo = Color::rand(0.5, 1.0);
-                let fuzz = rand_double(0.0, 0.5);
-                let sphere_material = Metal::new(albedo, fuzz);
-                let sphere = Box::new(Sphere::new(center, 0.2, sphere_material));
-                world.add(sphere);
-            } else {
-                let sphere_material = Dielectric::new(1.5);
-                let sphere = Box::new(Sphere::new(center, 0.2, sphere_material));
-                world.add(sphere);
-            }
-        }
-    }
-    let mat_center = Dielectric::new(1.5);
-    let mat_left = Lambertian::new(Color::new(0.4, 0.2, 0.1));
-    let mat_right = Metal::new(Color::new(0.7, 0.6, 0.5), 0.0);
-
-    let sphere_center = Box::new(Sphere::new(Point3::new(0.0,1.0,0.0), 1.0, mat_center));
-    let sphere_left = Box::new(Sphere::new(Point3::new(-4.0,1.0,0.0), 1.0, mat_left));
-    let sphere_right = Box::new(Sphere::new(Point3::new(4.0,1.0,0.0), 1.0, mat_right));
-    
-
-    world.add(sphere_center);
-    world.add(sphere_left);
-    world.add(sphere_right);
-    world
-}
-
-pub fn light_test() -> TraceableList{
-    let mut world = TraceableList::new();
-    let mat = Lambertian::new(Color::new(0.4, 0.2, 0.1));
-    let ground = Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, mat));
-    let sphere = Box::new(Sphere::new(Point3::new(0.0, 2.0, 0.0), 2.0, Lambertian::new(Color::new(0.8, 0.8, 0.8)))); 
-
-    let diff_light = DiffuseLights::new(Color::new(4.0,4.0,4.0));
-    let rect = Box::new(Rect::new(RectAxes::XY, -1.0, 2.0, 1.0, 3.0, 4.0, diff_light));
-    world.add(ground);
-    world.add(sphere);
-    //world.add(rect);
-    world
-}
-
-pub fn triangle_test() -> TraceableList{
-    let mut world = TraceableList::new();
-    let mat = Lambertian::new(Color::new(0.4, 0.2, 0.1));
-    let ground = Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, mat));
- 
-    let mat = Lambertian::new(Vec3::new(0.8, 0.8, 0.8));
-    let v0 = Vec3::new(-2.0, 0.1, 0.0);
-    let v1 = Vec3::new(2.0, 0.1, 0.0);
-    let v2 = Vec3::new(0.0, 2.1, 0.0);
-    let norms = [Vec3::new(0.0, 0.0, 1.0); 3];
-    let tri = Box::new(Triangle::new([v0, v1, v2], norms, mat));
-    world.add(ground);
-    world.add(tri);
-    world
-}
-
-pub fn obj_test() -> TraceableList{
-    let mut world = TraceableList::new(); 
-    let mut mesh = TraceableList::new(); 
-    let mat = Lambertian::new(Color::new(0.4, 0.2, 0.1));
-    let ground = Box::new(Sphere::new(Point3::new(0.0, -1050.0, 0.0), 1000.0, mat));
-    let (mut models, materials) = import_obj("/Users/simonpapworth/Downloads/helicopter.obj");
-    let diff_light = DiffuseLights::new(Color::new(4.0,4.0,4.0));
-    let rect = Box::new(Rect::new(RectAxes::XY, -4.0, -2.0, 1.0, 8.0, 4.0, diff_light));
-    mesh.add_obj(models, materials);
-    world.add(ground);
-    world.add(Box::new(mesh.to_Bvh()));
-    world
-}
-
-pub fn mesh_test() -> TraceableList{
-    let mut world = TraceableList::new(); 
-    let mut mesh_1 = tobj::Mesh::default();
-    let mut mesh_2 = tobj::Mesh::default();
-    let mut mesh_3 = tobj::Mesh::default();
-
-    mesh_1.positions = vec!(-2.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0,
-                            0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 1.0, 1.0, 0.0,
-                            2.0, 0.0, 0.0, 4.0, 0.0, 0.0, 3.0, 1.0, 0.0);
-                            
-    mesh_1.normals = vec!(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-                          0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-                          0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0);
-
-    mesh_1.indices = vec!(0, 1, 2, 3, 4, 5, 6, 7, 8);
-
-
-    mesh_2.positions = vec!(-2.0, 1.0, 0.0, 0.0, 1.0, 0.0, -1.0, 2.0, 0.0,
-                            0.0, 1.0, 0.0, 2.0, 1.0, 0.0, 1.0, 2.0, 0.0,
-                            2.0, 1.0, 0.0, 4.0, 1.0, 0.0, 3.0, 2.0, 0.0);
-
-    mesh_2.normals = vec!(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-                        0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-                        0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0);
-
-    mesh_2.indices = vec!(0, 1, 2, 3, 4, 5, 6, 7, 8);
-                    
-
-    mesh_3.positions = vec!(-2.0, 2.0, 0.0, 0.0, 2.0, 0.0, -1.0, 3.0, 0.0,
-                            0.0, 2.0, 0.0, 2.0, 2.0, 0.0, 1.0, 3.0, 0.0,
-                            2.0, 2.0, 0.0, 4.0, 2.0, 0.0, 3.0, 3.0, 0.0);
-
-    mesh_3.normals = vec!(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-                          0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-                          0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0);
-
-    mesh_3.indices = vec!(0, 1, 2, 3, 4, 5, 6, 7, 8);
-
-
-    let test_1 = tobj::Model::new(mesh_1, "test_1".to_string());
-    let test_2 = tobj::Model::new(mesh_2, "test_1".to_string());
-    let test_3 = tobj::Model::new(mesh_3, "test_1".to_string());
-
-
-    let test = vec!(test_1, test_2, test_3);
-    world.add_obj(test, None);
-    world
-}
-
-fn main(){
-
-    //Image
-    const IMAGE_WIDTH:i32 = 400;
-    const IMAGE_HEIGHT:i32 = ((IMAGE_WIDTH as f64)/ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 200;
-    const MAX_DEPTH: i32 = 50;
-
-
-
-    let background: Color;
-    let world: TraceableList;
-    let look_from: Vec3;
-    let look_at: Vec3;
-
-    let scene = 3;
-
-    match scene{
-        0 => {
-            background = Color::new(0.7, 0.8, 1.0);
-            world = sphere_world();
-            look_from = Point3::new(13.0, 2.0, 3.0);
-            look_at = Point3::new(0.0, 0.0, 0.0);
-        }
-
-        1 => {
-            background = Color::new(0.9, 0.9, 0.9);
-            world = light_test();
-            look_from = Point3::new(26.0, 3.0, 6.0);
-            look_at = Point3::new(0.0, 2.0, 0.0);
-        }
-
-        2 =>{
-            background = Color::new(0.9, 0.9, 0.9);
-            world = triangle_test();
-            look_from = Point3::new(0.0, 2.0, 26.0);
-            look_at = Point3::new(0.0, 0.0, 0.0);
-        }
-
-        3 =>{
-            background = Color::new(0.9, 0.9, 0.9);
-            world = obj_test();
-            look_from = Point3::new(-40.0, 10.0, 40.0);
-            //look_from = Point3::new(0.8, 0.2, 1.0);
-            look_at = Point3::new(0.0, 0.0, 0.0);
-        }
-
-        4 =>{
-            background = Color::new(0.9, 0.9, 0.9);
-            world = mesh_test();
-            look_from = Point3::new(26.0, 10.0, 10.0);
-            //look_from = Point3::new(0.8, 0.2, 1.0);
-            look_at = Point3::new(0.0, 0.0, 0.0);
-        }
-
-        _ => panic!("Scene ID invalid.")
-    }
-    
-    //let world = world.to_Bvh();
-
-    //Camera
-
-    let v_up = Vec3::new(0.0, 1.0, 0.0);
-    let dist_to_focus = 10.0;
-    let aperture = 0.0;
-    let cam = Camera::new(look_from, look_at, v_up, 20.0, ASPECT_RATIO, aperture, dist_to_focus);
-
-    //Render
-    let path = "results.ppm";
+pub fn initialise_file(path: &str, image_width: i32, image_height: i32) -> File{
     let mut file = OpenOptions::new()
                                     .create(true)
                                     .write(true)
                                     .open(path)
                                     .unwrap();
+    write!(file, "P3\n{} {} \n255\n", image_width, image_height).unwrap();
+    println!("{}",image_width*image_height);
+    file
+}
 
-    write!(file, "P3\n{} {} \n255\n", IMAGE_WIDTH, IMAGE_HEIGHT).unwrap();
-    let mut perc:i32 = 0;
-    println!("{}",IMAGE_WIDTH*IMAGE_HEIGHT);
-    for j in 0..IMAGE_HEIGHT{
-        // Loading Bar Output
-        if perc != ((j as f64)/(IMAGE_HEIGHT as f64)*100.0) as i32 {
-            perc = ((j as f64)/(IMAGE_HEIGHT as f64)*100.0) as i32;
-            println!("{}", ((j as f64)/(IMAGE_HEIGHT as f64)*100.0) as i32);
-        }
-        for i in 0..IMAGE_WIDTH{
-            let mut pixel_color = Color::new(0.0,0.0,0.0);
-            for _ in 0..SAMPLES_PER_PIXEL{
-                let u = (rand_double(0.0, 1.0) + i as f64)/(IMAGE_WIDTH as f64 - 1.0);
-                let v = (rand_double(0.0, 1.0) + (IMAGE_HEIGHT - j) as f64)/((IMAGE_HEIGHT - 1) as f64);
-                let r = cam.get_ray(u,v);
-                pixel_color = pixel_color + ray_color(&r, background, &world, MAX_DEPTH);
-            }
-            pixel_color.write_color(&mut file, SAMPLES_PER_PIXEL);
-        }
+pub fn initialise_threads<T:Traceable + 'static>(image_data: ImageData, scene_data: Arc<SceneData<T>>, samples: i32, shared_data: Arc<Mutex<SharedData>>, num_threads: i32) -> Vec<JoinHandle<()>>{
+    let mut handles = vec![];
+    for _ in 0..num_threads - 1 {
+        let shared_data = Arc::clone(&shared_data);
+        let scene_data = Arc::clone(&scene_data);
+        let handle = thread::spawn(move || iterate_image(image_data, scene_data, samples, shared_data));
+        handles.push(handle);
     }
+    handles
+}
+
+pub fn report_data(shared_data: Arc<Mutex<SharedData>>, pixel_colors: Vec<Color>) {
+
+     //Acquire lock
+     let mut unlocked_data  = shared_data.lock().unwrap();
+     let current_calculations = unlocked_data.current_calculations;
+     let total_calculations = unlocked_data.total_calculations;
+     let progress = unlocked_data.progress;
+
+     for i in 0..unlocked_data.pixel_colors.len() {
+        unlocked_data.pixel_colors[i] = unlocked_data.pixel_colors[i] + pixel_colors[i];
+     }
+
+     //Write data and update progress
+     unlocked_data.current_calculations += pixel_colors.len() as i64;
+     let new_progress = ((current_calculations) * 100 /total_calculations) as i64;
+     if new_progress - progress >= 1 {
+         println!("{}", new_progress);
+         unlocked_data.progress += 1;
+     }
+ }
+
+pub fn iterate_image<T:Traceable>(image_data: ImageData, scene_data: Arc<SceneData<T>>, samples: i32, shared_data: Arc<Mutex<SharedData>>){
+
+    let image_height = image_data.image_height as i64;
+    let image_width = image_data.image_width as i64;
+    for _ in 0..samples{
+        let mut pixel_colors = vec![Color::new(0.0,0.0,0.0); (image_height*image_width) as usize];
+        for j in 0..image_height{
+            for i in 0..image_width{
+                    let u = (rand_double(0.0, 1.0) + i as f64)/(image_width as f64 - 1.0);
+                    let v = (rand_double(0.0, 1.0) + (image_width - j) as f64)/((image_width - 1) as f64);
+                    let r = scene_data.cam.get_ray(u,v);
+                    let pixel_index = (j*image_width + i) as usize;
+                    pixel_colors[pixel_index] = pixel_colors[pixel_index] + ray_color(&r, scene_data.background, &scene_data.world, image_data.max_depth);
+                }
+        }
+        report_data(Arc::clone(&shared_data), pixel_colors);  
+    }   
 }
 
 #[cfg(test)]

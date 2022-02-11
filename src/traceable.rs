@@ -32,11 +32,11 @@ pub enum TraceResult{
 }
 
 
-pub trait Traceable: Hit{
+pub trait Traceable: Hit + Send + Sync {
     fn box_clone(&self) -> Box<dyn Traceable>;
     fn trace(&self, r: &Ray, t_min: f64, t_max: f64) -> TraceResult;
 }
- impl<T: Hit> Traceable for T where T: Clone + 'static{
+ impl<T: Hit> Traceable for T where T: Clone + Send + Sync + 'static{
      fn box_clone(&self) -> Box<dyn Traceable>{
          Box::new((*self).clone())
      }
