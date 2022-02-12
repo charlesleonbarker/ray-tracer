@@ -80,7 +80,7 @@ fn main(){
    
     //Shared data
     let num_threads = (num_cpus::get()) as i32;
-    let samples = samples_per_pixel / num_threads;
+    let samples = ((samples_per_pixel as f64) / (num_threads as f64)).ceil() as i32;
     let pixel_colors = vec![Color::new(0.0,0.0,0.0); (image_width * image_height) as usize];
     let current_calculations = 0;
     let total_calculations = (image_height * image_width * samples_per_pixel) as i64;
