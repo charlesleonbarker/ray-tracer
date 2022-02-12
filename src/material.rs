@@ -61,10 +61,10 @@ impl Metal{
     }
 
     fn deterministic_scatter(&self, r_in: &Ray, rec: &HitRecord, rand_in_unit_sphere: Vec3) -> Option<(Color, Ray)>{
-        let reflected = r_in.direction().unit_vector().reflect(&rec.normal);
+        let reflected = r_in.direction().unit_vector().reflect(rec.normal);
         let scattered = Ray::new(rec.p, reflected + self.fuzz*rand_in_unit_sphere);
         let attenuation = self.albedo;
-        if Vec3::dot(&scattered.direction(), &rec.normal) > 0.0{
+        if Vec3::dot(scattered.direction(), rec.normal) > 0.0{
             Some((attenuation, scattered))
         }else{
             None
@@ -98,16 +98,16 @@ impl Dielectric{
         }
         
         let unit_dir = r_in.direction().unit_vector();
-        let cos_theta = Vec3::dot(&-unit_dir, &rec.normal).min(1.0);
+        let cos_theta = Vec3::dot(-unit_dir, rec.normal).min(1.0);
         let sin_theta = (1.0 - cos_theta*cos_theta).sqrt();
 
         let cannot_refract = refraction_ratio*sin_theta > 1.0;
         let direction:Vec3;
 
         if cannot_refract || Dielectric::reflectance(cos_theta, refraction_ratio) > reflectance_test{
-            direction = Vec3::reflect(&unit_dir, &rec.normal);
+            direction = Vec3::reflect(unit_dir, rec.normal);
         } else{
-            direction = Vec3::refract(&unit_dir, &rec.normal, refraction_ratio);
+            direction = Vec3::refract(unit_dir, rec.normal, refraction_ratio);
         }
         let scattered = Ray::new(rec.p, direction);
         Some((attenuation, scattered))
@@ -243,7 +243,7 @@ mod tests {
     fn test_reflectance(){
         let unit_vec = Vec3::new(1.0, 2.0, 3.0).unit_vector();
         let normal = Vec3::new(2.0, -1.0, 1.0);
-        let cos_theta = Vec3::dot(&-unit_vec, &normal).min(1.0);
+        let cos_theta = unit_vec.dot(normal).min(1.0);
         let refraction_ratio = 2.0;
         assert_eq!(Dielectric::reflectance(cos_theta,refraction_ratio), 1.0/9.0 + (8.0/9.0)*((1.0-cos_theta).powi(5)));
     }

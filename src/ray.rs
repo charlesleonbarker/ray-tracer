@@ -23,9 +23,9 @@ impl Ray{
     }
 
     pub fn offset_origin(&self,  p_err: Vec3, norm: Vec3) -> Ray{
-        let d = Vec3::dot(&norm.abs(), &p_err);
+        let d = norm.abs().dot(p_err);
         let mut offset = d * norm;
-        if Vec3::dot(&self.dir, &norm) < 0.0{
+        if self.dir.dot(norm) < 0.0{
             offset = -offset;
         }
         Ray::new(self.orig + offset, self.dir)

@@ -58,15 +58,15 @@ pub struct SharedData{
 fn main(){
 
     //Scene
-    let (world, background, look_from, look_at) = scenes::triangle_test();
+    let (world, background, look_from, look_at) = scenes::sphere_world();
     //let world = world.to_Bvh();
 
     //Image
     let aspect_ratio = 3.0/2.0;
-    let image_width = 200;
+    let image_width = 400;
     let image_height=  ((image_width as f64)/aspect_ratio) as i32;
-    let samples_per_pixel = 100;
-    let max_depth=  5;
+    let samples_per_pixel = 500;
+    let max_depth=  50;
 
     //Camera
     let v_up = Vec3::new(0.0, 1.0, 0.0);

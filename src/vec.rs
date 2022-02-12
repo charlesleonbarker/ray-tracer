@@ -58,16 +58,16 @@ impl Vec3{
         self.arr[index]
     }
 
-    pub fn length(&self) -> f64{
+    pub fn length(self) -> f64{
         self.length_squared().sqrt()
     }
 
-    pub fn length_squared(&self) -> f64{
+    pub fn length_squared(self) -> f64{
         self.x().powi(2) + self.y().powi(2) + self.z().powi(2)
     }
 
-    pub fn dot(lhs:&Vec3, rhs:&Vec3) -> f64{
-        lhs.x()*rhs.x() + lhs.y()*rhs.y() + lhs.z()*rhs.z()
+    pub fn dot(self, rhs: Vec3) -> f64{
+        self.x()*rhs.x() + self.y() * rhs.y() + self.z() * rhs.z()
     }
 
     pub fn sort_by<F>(&mut self, compare: F)
@@ -77,7 +77,7 @@ impl Vec3{
         self.arr.sort_by(compare);
     }
 
-    pub fn max_dim(&self) -> usize{
+    pub fn max_dim(self) -> usize{
         self.arr.iter()
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.abs().partial_cmp(&b.abs())
@@ -92,31 +92,31 @@ impl Vec3{
         self.arr[j] = temp;
     }
 
-    pub fn unit_vector(&self) -> Vec3{
+    pub fn unit_vector(self) -> Vec3{
         self/(self.length())
     }
 
-    pub fn cross(lhs: &Vec3, rhs: &Vec3) -> Vec3{
-        Vec3::new(lhs.y()*rhs.z() - lhs.z()*rhs.y(), 
-                  lhs.z()*rhs.x() - lhs.x()*rhs.z(),
-                  lhs.x()*rhs.y() - lhs.y()*rhs.x())
+    pub fn cross(self, rhs: Vec3) -> Vec3{
+        Vec3::new(self.y()*rhs.z() - self.z()*rhs.y(), 
+                  self.z()*rhs.x() - self.x()*rhs.z(),
+                  self.x()*rhs.y() - self.y()*rhs.x())
     }
 
-    pub fn near_zero(&self) -> bool{
+    pub fn near_zero(self) -> bool{
         let min = 1e-8;
         self.x().abs() < min && self.y().abs() < min && self.z().abs() < min
     }
 
-    pub fn reflect(&self, normal: &Vec3) -> Vec3{
-        self - 2.0*Vec3::dot(&self, normal)*normal
+    pub fn reflect(self, normal: Vec3) -> Vec3{
+        self - 2.0 * self.dot(normal)*normal
     }
 
     pub fn elementwise_mult(&self, rhs: &Vec3) -> Vec3{
         Vec3::new(self.x()*rhs.x(), self.y()*rhs.y(), self.z()*rhs.z())
     }
 
-    pub fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3{
-        let cos_theta = Vec3::dot(&(-uv), &n).min(1.0);
+    pub fn refract(uv: Vec3, n: Vec3, etai_over_etat: f64) -> Vec3{
+        let cos_theta = -uv.dot(n).min(1.0);
         let r_out_perp = etai_over_etat*(uv + cos_theta*n);
         let r_out_parallel = -(1.0 - r_out_perp.length_squared()).abs().sqrt() * n;
         r_out_perp + r_out_parallel
@@ -128,9 +128,9 @@ impl Vec3{
     }
 
     pub fn offset_origin(&self, dir: Point3,  p_err: Vec3, norm: Vec3) -> Point3{
-        let d = Vec3::dot(&norm.abs(), &p_err);
+        let d = norm.abs().dot(p_err);
         let mut offset = d*p_err;
-        if Vec3::dot(&dir, &norm) < 0.0{
+        if dir.dot(norm) < 0.0{
             offset = -offset;
         }
         self + offset
@@ -279,7 +279,7 @@ mod tests {
         let lhs = Vec3::new(1.0,2.0,3.0);
         let rhs = Vec3::new(4.0,2.0,-1.0);
         let result = 5.0;
-        assert_eq!(Vec3::dot(&lhs,&rhs), result);
+        assert_eq!(lhs.dot(rhs), result);
     }
 
     #[test]
@@ -308,7 +308,7 @@ mod tests {
         let lhs = Vec3::new(3.0,-3.0,1.0);
         let rhs = Vec3::new(4.0,9.0,2.0);
         let result = Vec3::new(-15.0, -2.0, 39.0);
-        assert_eq!(Vec3::cross(&lhs, &rhs), result);
+        assert_eq!(lhs.cross(rhs), result);
     }
 
     #[test]
@@ -345,7 +345,7 @@ mod tests {
     fn test_reflect(){
         let vec = Vec3::new(1.0, 0.0, 0.0);
         let normal = Vec3::new(-1.0, 0.0, 0.0);
-        assert_eq!(vec.reflect(&normal), Vec3::new(-1.0, 0.0, 0.0));
+        assert_eq!(vec.reflect(normal), Vec3::new(-1.0, 0.0, 0.0));
     }
 
     
@@ -354,7 +354,7 @@ mod tests {
         let vec = Vec3::new(0.5, 0.5, 0.0);
         let normal = Vec3::new(1.0, 0.0, 0.0);
         let reflective_index = 1.5;
-        assert_eq!(Vec3::refract(&vec, &normal, reflective_index), Vec3::new(-(1.0-0.75f64.powi(2)).sqrt(), 0.75, 0.0));
+        assert_eq!(Vec3::refract(vec, normal, reflective_index), Vec3::new(-(1.0-0.75f64.powi(2)).sqrt(), 0.75, 0.0));
     }
 
     #[test]
