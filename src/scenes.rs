@@ -110,10 +110,10 @@ pub fn obj_test() -> (TraceableList, Color, Point3, Point3){
     let diff_light = DiffuseLights::new(Color::new(4.0,4.0,4.0));
     let rect = Box::new(Rect::new(RectAxes::XY, -4.0, -2.0, 1.0, 8.0, 4.0, diff_light));
     mesh.add_obj(models, materials);
-    world.add(ground);
-    world.add(Box::new(mesh.to_Bvh()));
+    //world.add(ground);
+    //world.add(Box::new(mesh.to_Bvh()));
     
-    (world, background, look_from, look_at)
+    (mesh, background, look_from, look_at)
 }
 
 pub fn mesh_test() -> (TraceableList, Color, Point3, Point3){
