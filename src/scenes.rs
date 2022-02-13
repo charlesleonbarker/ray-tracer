@@ -106,7 +106,7 @@ pub fn obj_test() -> (TraceableList, Color, Point3, Point3){
     let mut mesh = TraceableList::new(); 
     let mat = Lambertian::new(Color::new(0.4, 0.2, 0.1));
     let ground = Box::new(Sphere::new(Point3::new(0.0, -1050.0, 0.0), 1000.0, mat));
-    let (mut models, materials) = import_obj("/Users/simonpapworth/Downloads/helicopter.obj");
+    let (mut models, materials) = import_obj("C:/Users/Charlie/Ray_Tracer/ray-tracer/lowpoly_bird.obj");
     let diff_light = DiffuseLights::new(Color::new(4.0,4.0,4.0));
     let rect = Box::new(Rect::new(RectAxes::XY, -4.0, -2.0, 1.0, 8.0, 4.0, diff_light));
     mesh.add_obj(models, materials);

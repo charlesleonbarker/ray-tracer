@@ -58,8 +58,8 @@ pub struct SharedData{
 fn main(){
 
     //Scene
-    let (world, background, look_from, look_at) = scenes::sphere_world();
-    //let world = world.to_Bvh();
+    let (world, background, look_from, look_at) = scenes::obj_test();
+    let world = world.to_Bvh();
 
     //Image
     let aspect_ratio = 3.0/2.0;
