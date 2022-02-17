@@ -1,6 +1,8 @@
 use crate::vec::*;
 use crate::ray::*;
 use crate::traceable::*;
+use crate::material::*;
+use crate::primitive::*;
 use std::cmp::Ordering;
 
 #[derive (Debug, Copy, Clone, Default, PartialEq)]
@@ -11,7 +13,7 @@ pub struct Aabb{
 }
 
 #[derive(Clone)]
-pub enum BvhNode{
+pub enum BvhNode {
     Branch(BvhBranch),
     Root(BvhRoot),
 }
@@ -24,7 +26,7 @@ pub struct BvhBranch{
 
 #[derive(Clone)]
 pub struct BvhRoot{
-    traceable: Box<dyn Traceable>,
+    traceable: Primitive,
     bb: Aabb
 }
 
@@ -41,16 +43,20 @@ impl Aabb{
         self.max
     }
 
-    pub fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> bool{
+    pub fn centroid(&self) -> Point3{
+        self.min() + (self.max() - self.min()) / 2.0
+    }
+
+    pub fn hit(&self, r: &Ray, mut t_min: f64, mut t_max: f64) -> bool{
         for a in 0..3{
-            let tx0 = (self.min().index(a) - r.origin().index(a))/r.direction().index(a);
-            let tx1 = (self.max().index(a) - r.origin().index(a))/r.direction().index(a);
+            let tx0 = (self.min()[a] - r.origin()[a]) / r.direction()[a];
+            let tx1 = (self.max()[a] - r.origin()[a]) / r.direction()[a];
             
             let t0 = tx0.min(tx1);
             let t1 = tx0.max(tx1);
 
-            let t_min = t0.max(t_min);
-            let t_max = t1.min(t_max);
+            t_min = t0.max(t_min);
+            t_max = t1.min(t_max);
 
             if t_max <= t_min{
                 return false;
@@ -71,7 +77,7 @@ impl Aabb{
         Aabb::new(small, big)
     }
 
-    pub fn box_compare(a: &Box<dyn Traceable>, b: &Box<dyn Traceable>, axis: i8) -> Ordering{
+    pub fn box_compare<H>(a: &H, b: &H, axis: i8) -> Ordering where H: Hit {
         match (a.bounding_box(), b.bounding_box()){
             (Some(box_a), Some(box_b)) => box_a.min().index(axis as usize).partial_cmp(&box_b.min().index(axis as usize)).unwrap(),
             (_, _) => panic!("One of a, b cannot be bound")
@@ -79,7 +85,7 @@ impl Aabb{
     }
 }
 
-impl BvhBranch{
+impl BvhBranch {
     pub fn new(left: TraceableList, right: TraceableList, bb: Aabb) -> BvhNode{
         BvhNode::Branch(BvhBranch{children: (Box::new(BvhNode::new(left)), Box::new(BvhNode::new(right))), bb})
     }
@@ -98,7 +104,7 @@ impl BvhBranch{
 }
 
 impl BvhRoot{
-    pub fn new(traceable: Box<dyn Traceable>, bb: Aabb) -> BvhNode{
+    pub fn new(traceable: Primitive, bb: Aabb) -> BvhNode{
         BvhNode::Root(BvhRoot{traceable, bb})
     }
 }
@@ -115,21 +121,64 @@ impl BvhNode{
             } 
             
             _ => {
-                let axis = fastrand::i8(0..3);
-                objects.sort_by(|a, b| Aabb::box_compare(a,b, axis));
+                let axis = objects.get_largest_extent().expect("The TraceableList is empty") as i8;
+                objects.sort_by(|a, b| Aabb::box_compare(a, b, axis));
                 let mid = object_span/2;
                 let right_objs = objects.split_off(mid);
                 let left_objs = objects;
                 let bb_left = left_objs.bounding_box().expect("A primitive within the TraceableList cannot be bound");
                 let bb_right = right_objs.bounding_box().expect("A primitive within the TraceableList cannot be bound");
-                return BvhBranch::new(left_objs, right_objs, Aabb::surrounding_box(bb_left, bb_right))
+                let bb_surrounding = Aabb::surrounding_box(bb_left, bb_right);
+                return BvhBranch::new(left_objs, right_objs, bb_surrounding)
+            }
+        }
+    }
+
+    fn hit_debug(&self ,r: &Ray, t_min: f64, t_max: f64) -> (i32, Option<(HitRecord, &Material)>) {
+        match self{
+            BvhNode::Branch(x) => x.hit_debug(r, t_min, t_max),
+            BvhNode::Root(x) => x.hit_debug(r, t_min, t_max)
+        }
+    }
+}
+
+impl BvhBranch{
+    pub fn hit_debug(&self, r: &Ray, t_min: f64, t_max: f64) -> (i32, Option<(HitRecord, &Material)>) {
+        if !self.bb.hit(r, t_min, t_max){
+            return (0, None)
+        } 
+
+        let mut hit_left = self.left().hit_debug(r, t_min, t_max);
+        let mut hit_right = self.right().hit_debug(r, t_min, t_max);
+        hit_left.0 += hit_right.0;
+        hit_right.0 = hit_left.0;
+        match(hit_left.1, hit_right.1){
+            (None, None) => (hit_left.0, None),
+            (Some(_), None) => hit_left,
+            (None, Some(_)) => hit_right,
+            (Some(left), Some(right)) =>  {
+                if left.0.t <= right.0.t{
+                    hit_left
+                } else {
+                    hit_right
+                }
             }
         }
     }
 }
 
-impl Hit for BvhBranch{
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+impl BvhRoot{
+    pub fn hit_debug(&self, r: &Ray, t_min: f64, t_max: f64) -> (i32, Option<(HitRecord, &Material)>) {
+        match self.traceable.hit(r, t_min, t_max) {
+            Some((rec, mat)) => {
+                (1, Some((rec, mat)))
+            }
+            None => (1, (None))
+        }
+    }
+}
+impl Hit for BvhBranch {
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<(HitRecord, &Material)> {
         if !self.bb.hit(r, t_min, t_max){
             return None
         } 
@@ -141,7 +190,7 @@ impl Hit for BvhBranch{
             (Some(_), None) => hit_left,
             (None, Some(_)) => hit_right,
             (Some(left), Some(right)) =>  {
-                if left.t <= right.t{
+                if left.0.t <= right.0.t{
                     hit_left
                 } else {
                     hit_right
@@ -156,8 +205,8 @@ impl Hit for BvhBranch{
     }
 }
 
-impl Hit for BvhRoot{
-    fn hit(&self ,r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>{
+impl Hit for BvhRoot {
+    fn hit(&self ,r: &Ray, t_min: f64, t_max: f64) -> Option<(HitRecord, &Material)> {
         self.traceable.hit(r, t_min, t_max)
     }
     fn bounding_box(&self) -> Option<Aabb>{
@@ -166,7 +215,7 @@ impl Hit for BvhRoot{
 }
 
 impl Hit for BvhNode{
-    fn hit(&self ,r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>{
+    fn hit(&self ,r: &Ray, t_min: f64, t_max: f64) -> Option<(HitRecord, &Material)> {
         match self{
             BvhNode::Branch(x) => x.hit(r, t_min, t_max),
             BvhNode::Root(x) => x.hit(r, t_min, t_max)
@@ -184,6 +233,9 @@ impl Hit for BvhNode{
 mod tests {
     use crate::sphere::*;
     use crate::material::*;
+    
+    use crate::triangle::*;
+        
     use super::*;
 
     #[test]
@@ -210,12 +262,12 @@ mod tests {
         let aabb = Aabb::new(min, max);
 
         //Case 1: Hit
-        let r = Ray::new(Vec3::new(20.0, 5.0, 5.0), Vec3::new( -1.0, 0.5, -0.2));
+        let r = Ray::new(Vec3::new(20.0, 5.0, 5.0), Vec3::new( -1.0, 0.4, -0.2));
         let rec = aabb.hit(&r, 0.0, 100.0);
         assert_eq!(rec, true);
 
         //Case 2: Miss (due to timeout)
-        let rec = aabb.hit(&r, 0.0, 9.9);
+        let rec = aabb.hit(&r, 0.0, 9.99);
         assert_eq!(rec, false);
 
         //Case 3: Miss (due to geometry)
@@ -242,6 +294,24 @@ mod tests {
 
 
     }
+
+    #[test]
+    fn test_box_compare(){
+        
+        let center = Vec3::new(0.0, -10.0, 0.0);
+        let radius = 5.0;
+        let mat = Material::Lambertian(Lambertian::default());
+        let s1 = Primitive::Sphere(Sphere::new(center, radius, mat));
+
+        let center = Vec3::new(-20.0, -10.0, 0.0);
+        let radius = 5.0;
+        let mat = Material::Lambertian(Lambertian::default());
+        let s2 = Primitive::Sphere(Sphere::new(center, radius, mat));
+
+        let sb = Aabb::box_compare(&s1, &s2, 0);
+        assert_eq!(sb, Ordering::Greater);
+    }
+
     #[test]
     fn test_bvhnode_hit(){
 
@@ -254,8 +324,8 @@ mod tests {
         //Case 1: No intersections
         let center = Vec3::new(0.0, -10.0, 0.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
-        let s = Box::new(Sphere::new(center, radius, mat));
+        let mat = Material::Lambertian(Lambertian::default());
+        let s = Primitive::Sphere(Sphere::new(center, radius, mat));
         for _ in 1..100{
             list.add(s.clone());
         }
@@ -267,29 +337,133 @@ mod tests {
         //Case 2: Single intersection
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
-        let s = Box::new(Sphere::new(center, radius, mat));
+        let mat = Material::Lambertian(Lambertian::default());
+        let s = Primitive::Sphere(Sphere::new(center, radius, mat));
         list.add(s);
         let list_clone = list.clone();
         let bvh = list_clone.to_Bvh();
         let hit = bvh.hit(&r, t_min, t_max);
         assert!(hit.is_some());
-        let rec = hit.unwrap();
+        let (rec, _) = hit.unwrap();
         assert_eq!(rec.t, 5.0); 
         
         //Case 3: Two intersections
         let center = Vec3::new(-2.0, 0.0, 0.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
-        let s = Box::new(Sphere::new(center, radius, mat));
+        let mat = Material::Lambertian(Lambertian::default());
+        let s = Primitive::Sphere(Sphere::new(center, radius, mat));
         list.add(s);
         let list_clone = list.clone();
         let bvh = list_clone.to_Bvh();
         let hit = bvh.hit(&r, t_min, t_max);
         assert!(hit.is_some());
-        let rec = hit.unwrap();
+        let (rec, _) = hit.unwrap();
         assert_eq!(rec.t, 3.0); 
         
+    }
+
+    #[test]
+    
+    fn test_bvhnode_hit_debug(){
+
+        let t_min = 0.0;
+        let t_max = 1000.0;
+
+        //Case 1: Ray misses bounding box entirely
+        let r = Ray::new(Vec3::new(-10.0, -10.0, 0.0), Vec3::new( 1.0, 0.0, 0.0));
+        let mut list = TraceableList::new();
+        let radius = 5.0;
+        let mat = Material::Lambertian(Lambertian::default());
+        for i in 1..100{
+            let center = Vec3::new(i as f64, 0.0, 0.0);
+            let s = Primitive::Sphere(Sphere::new(center, radius, mat));
+            list.add(s);
+        }
+        let bvh = list.to_Bvh();
+        let hit = bvh.hit_debug(&r, t_min, t_max);
+        assert_eq!(hit.0, 0);
+        assert!(hit.1.is_none());
+
+        //Case 2: Ray hits one bounding box, but misses the sphere
+        let r = Ray::new(Vec3::new(1.0, -10.0, 6.0), Vec3::new( 0.0, 1.0, 0.0));
+        let mut list = TraceableList::new();
+        let radius = 5.0;
+        let mat = Material::Lambertian(Lambertian::default());
+        for i in 1..100{
+            let center = Vec3::new(i as f64, 0.0, 0.0);
+            let s = Primitive::Sphere(Sphere::new(center, radius, mat));
+            list.add(s);
+        }
+        let bvh = list.to_Bvh();
+        let hit = bvh.hit_debug(&r, t_min, t_max);
+        assert_eq!(hit.0, 0);
+        assert!(hit.1.is_none());
+
+
+         //Case 3: Ray hits all bounding boxes but misses the spheres
+         let r = Ray::new(Vec3::new(-10.0, 6.0, 0.0), Vec3::new( 1.0, 0.0, 0.0));
+         let mut list = TraceableList::new();
+         let radius = 5.0;
+         let mat = Material::Lambertian(Lambertian::default());
+         for i in 1..100{
+             let center = Vec3::new(i as f64, 0.0, 0.0);
+             let s = Primitive::Sphere(Sphere::new(center, radius, mat));
+             list.add(s);
+         }
+         let bvh = list.to_Bvh();
+         let hit = bvh.hit_debug(&r, t_min, t_max);
+         assert_eq!(hit.0, 0);
+         assert!(hit.1.is_none());
+
+         //Case 4: Ray hits all spheres
+         let r = Ray::new(Vec3::new(-10.0, 0.0, 0.0), Vec3::new( 1.0, 0.0, 0.0));
+         let mut list = TraceableList::new();
+         let radius = 5.0;
+         let mat = Material::Lambertian(Lambertian::default());
+         for i in 1..100{
+             let center = Vec3::new(i as f64, 0.0, 0.0);
+             let s = Primitive::Sphere(Sphere::new(center, radius, mat));
+             list.add(s);
+         }
+         let bvh = list.to_Bvh();
+         let hit = bvh.hit_debug(&r, t_min, t_max);
+         assert_eq!(hit.0, 99);
+         assert!(hit.1.is_some()); 
+         
+         //Case 5: Ray hits 10 spheres and 10 bounding boxes
+         let r = Ray::new(Vec3::new(20.0, -10.0, 4.0), Vec3::new( 0.0, 1.0, 0.0));
+         let mut list = TraceableList::new();
+         let radius = 5.0;
+         let mat = Material::Lambertian(Lambertian::default());
+         for i in 1..100{
+             let center = Vec3::new(i as f64, 0.0, 0.0);
+             let s = Primitive::Sphere(Sphere::new(center, radius, mat));
+             list.add(s);
+         }
+         let bvh = list.to_Bvh();
+         let hit = bvh.hit_debug(&r, t_min, t_max);
+         let rec = hit.1.unwrap();
+         assert_eq!(hit.0, 9);
+         assert!(hit.1.is_some());
+
+         //Case 6: Ray hits 1 triangles
+         let r = Ray::new(Vec3::new(1.5, -10.0, 4.0), Vec3::new( 0.0, 1.0, 0.0));
+         let mut list = TraceableList::new();
+         let mat = Material::Lambertian(Lambertian::default());
+         for i in 1..100{
+             let v1 = Vec3::new(i as f64, 0.0, 0.0);
+             let v2 = Vec3::new((i + 1) as f64, 0.0, 0.0);
+             let v3 = Vec3::new(i as f64 + 0.5, 0.0, 10.0);
+             let norm = Vec3::new(0.0, 1.0, 0.0);
+             let s = Primitive::Triangle(Triangle::new([v1, v2, v3], [norm; 3], mat ));
+             list.add(s);
+         }
+         let bvh = list.to_Bvh();
+         let hit = bvh.hit_debug(&r, t_min, t_max);
+         let rec = hit.1;
+         assert_eq!(hit.0, 1);
+        assert!(rec.is_some());
+
     }
 
     

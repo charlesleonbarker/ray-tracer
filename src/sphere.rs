@@ -5,20 +5,24 @@ use crate::bvh::*;
 use crate::material::*;
 
 #[derive (Copy, Clone)]
-pub struct Sphere<M> where M: Scatter{
+pub struct Sphere {
     center: Point3,
     radius: f64,
-    material: M
+    material: Material
 }
 
-impl<M> Sphere<M> where M: Scatter{
-    pub fn new(cen: Point3, rad: f64, mat: M) -> Sphere<M>{
+impl Sphere{
+    pub fn new(cen: Point3, rad: f64, mat: Material) -> Sphere{
         Sphere{center: cen, radius: rad, material: mat}
+    }
+
+    pub fn center(&self) -> Point3{
+        self.center
     }
 }
 
-impl<M> Hit for Sphere<M> where M: Scatter{
-    fn hit(&self, r:&Ray, t_min: f64, t_max: f64) -> Option<HitRecord>{
+impl Hit for Sphere{
+    fn hit(&self, r:&Ray, t_min: f64, t_max: f64) -> Option<(HitRecord, &Material)> {
         let oc = r.origin() - self.center;
         let a = r.direction().length_squared();
         let half_b = oc.dot(r.direction());
@@ -39,8 +43,8 @@ impl<M> Hit for Sphere<M> where M: Scatter{
             let t = root;
             let p = r.at(t);
             let outward_normal = (p - self.center)/self.radius;
-            let new_rec = HitRecord::new(p, outward_normal, root, *r, &self.material, Vec3::default());
-            Some(new_rec)
+            let new_rec = HitRecord::new(p, outward_normal, root, *r, Vec3::default());
+            Some((new_rec, &self.material))
         }
     }
 
@@ -60,7 +64,7 @@ mod tests {
     fn test_new(){
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
+        let mat = Material::Lambertian(Lambertian::default());
         let s = Sphere::new(center, radius, mat);
         assert_eq!(s.center, Vec3::new(0.0, 0.0, 0.0));
         assert_eq!(s.radius, 5.0);
@@ -72,14 +76,14 @@ mod tests {
         //Case 1: Intersection from outside of sphere
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
+        let mat = Material::Lambertian(Lambertian::default());
         let s = Sphere::new(center, radius, mat);
         let r = Ray::new(Vec3::new(-10.0, 0.0, 0.0), Vec3::new( 1.0, 0.0, 0.0));
         let t_min = 0.0;
         let t_max = 100.0;
         let rec_wrapper = s.hit(&r, t_min, t_max);
         assert!(rec_wrapper.is_some());
-        let rec = rec_wrapper.unwrap();
+        let (rec, _) = rec_wrapper.unwrap();
         assert_eq!(rec.t(), 5.0);
         assert_eq!(rec.normal(), Vec3::new(-1.0, 0.0, 0.0));
         assert_eq!(rec.p(), Point3::new(-5.0, 0.0, 0.0));
@@ -89,7 +93,7 @@ mod tests {
         let r = Ray::new(Vec3::new(1.0, 0.0, 0.0), Vec3::new( -2.0, 0.0, 0.0));
         let rec_wrapper = s.hit(&r, t_min, t_max);
         assert!(rec_wrapper.is_some());
-        let rec = rec_wrapper.unwrap();
+        let rec = rec_wrapper.unwrap().0;
         assert_eq!(rec.t(), 3.0);
         assert_eq!(rec.normal(), Vec3::new(1.0, 0.0, 0.0));
         assert_eq!(rec.p(), Point3::new(-5.0, 0.0, 0.0));
@@ -99,7 +103,7 @@ mod tests {
         let r = Ray::new(Vec3::new(-5.0, 5.0, 0.0), Vec3::new( 0.0, -1.0, 0.0));
         let rec_wrapper = s.hit(&r, t_min, t_max);
         assert!(rec_wrapper.is_some());
-        let rec = rec_wrapper.unwrap();
+        let (rec, _) = rec_wrapper.unwrap();
         assert_eq!(rec.t(), 5.0);
         assert_eq!(rec.normal(), Vec3::new(-1.0, 0.0, 0.0));
         assert_eq!(rec.p(), Point3::new(-5.0, 0.0, 0.0));
@@ -110,7 +114,7 @@ mod tests {
         let r = Ray::new(Vec3::new(0.0, -10.0, 0.0), Vec3::new( 0.0, 1.0, 0.0));
         let rec_wrapper = s.hit(&r, t_min, t_max);
         assert!(rec_wrapper.is_some());
-        let rec = rec_wrapper.unwrap();
+        let (rec, _) = rec_wrapper.unwrap();
         assert_eq!(rec.t(), 5.0);
         assert_eq!(rec.normal(), Vec3::new(0.0, -1.0, 0.0));
         assert_eq!(rec.p(), Point3::new(0.0, -5.0, 0.0));
@@ -121,7 +125,7 @@ mod tests {
     fn test_bounding_box(){
         let center = Vec3::new(0.0, -3.0, 2.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
+        let mat = Material::Lambertian(Lambertian::default());
         let s = Sphere::new(center, radius, mat);
         let bb = s.bounding_box().unwrap();
         assert_eq!(bb.min(), Point3::new(-5.0, -8.0, -3.0));

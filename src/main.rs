@@ -4,6 +4,7 @@ extern crate impl_ops;
 extern crate fastrand;
 extern crate tobj;
 extern crate num_cpus;
+extern crate enum_dispatch;
 
 mod vec;
 mod ray;
@@ -16,17 +17,23 @@ mod bvh;
 mod rect;
 mod triangle;
 mod scenes;
+mod primitive;
+mod bounding_box;
 
 use crate::vec::*;
 use crate::ray::*;
 use crate::traceable::*;
 use crate::camera::*;
 use crate::util::*;
+use crate::material::*;
+use crate::bounding_box::*;
+use crate::enum_dispatch::*;
 
 use std::f64::INFINITY;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
@@ -41,10 +48,10 @@ pub struct ImageData {
 }
 
 #[derive (Clone)]
-pub struct SceneData<T: Traceable>{
-    pub world: T,
+pub struct SceneData<H> where H: Hit{
+    pub world: H,
     pub background: Color,
-    pub cam: Camera
+    pub cam: Camera,    
 }
 
 #[derive (Clone)]
@@ -106,7 +113,7 @@ fn main(){
     }
 }
 
-pub fn ray_color(r: &Ray, background: Color, world: &dyn Traceable, depth: i32) -> Color {
+pub fn ray_color<T>(r: &Ray, background: Color, world: &T, depth: i32) -> Color where T: Hit {
 
     //If we've exceeded the ray bounce limit, no more light is gathered.
     if depth <= 0{
@@ -132,7 +139,8 @@ pub fn initialise_file(path: &str, image_width: i32, image_height: i32) -> File{
     file
 }
 
-pub fn initialise_threads<T:Traceable + 'static>(image_data: ImageData, scene_data: Arc<SceneData<T>>, samples: i32, shared_data: Arc<Mutex<SharedData>>, num_threads: i32) -> Vec<JoinHandle<()>>{
+pub fn initialise_threads<H>(image_data: ImageData, scene_data: Arc<SceneData<H>>, samples: i32, shared_data: Arc<Mutex<SharedData>>, num_threads: i32) -> Vec<JoinHandle<()>>
+where H: Hit + 'static {
     let mut handles = vec![];
     for _ in 0..num_threads - 1 {
         let shared_data = Arc::clone(&shared_data);
@@ -164,7 +172,8 @@ pub fn report_data(shared_data: Arc<Mutex<SharedData>>, pixel_colors: Vec<Color>
      }
  }
 
-pub fn iterate_image<T:Traceable>(image_data: ImageData, scene_data: Arc<SceneData<T>>, samples: i32, shared_data: Arc<Mutex<SharedData>>){
+pub fn iterate_image<H>(image_data: ImageData, scene_data: Arc<SceneData<H>>, samples: i32, shared_data: Arc<Mutex<SharedData>>)
+where H: Hit + 'static {
 
     let image_height = image_data.image_height as i64;
     let image_width = image_data.image_width as i64;

@@ -5,24 +5,27 @@ use crate::ray::*;
 use crate::bvh::*;
 use crate::material::*;
 use crate::triangle::*;
+use crate::primitive::*;
+use crate::enum_dispatch::*;
+
 use std::clone;
 use std::ops::Index;
 use core::cmp::Ordering;
 use std::convert::TryFrom;
 
 #[derive (Copy, Clone)]
-pub struct HitRecord<'a>{
+pub struct HitRecord{
+    
     pub p: Point3,
     pub normal: Vec3,
     pub t: f64,
     pub front_face: bool,
-    pub mat: &'a dyn Scatter,
     pub p_err: Vec3,
 }
 
-#[derive (Default)]
-pub struct TraceableList{
-    list: Vec<Box<dyn Traceable>>
+#[derive (Default, Clone)]
+pub struct TraceableList {
+    list: Vec<Primitive>
 }
 
 pub enum TraceResult{
@@ -31,38 +34,11 @@ pub enum TraceResult{
     Scattered((Color, Ray))
 }
 
-
-pub trait Traceable: Hit + Send + Sync {
-    fn box_clone(&self) -> Box<dyn Traceable>;
-    fn trace(&self, r: &Ray, t_min: f64, t_max: f64) -> TraceResult;
-}
- impl<T: Hit> Traceable for T where T: Clone + Send + Sync + 'static{
-     fn box_clone(&self) -> Box<dyn Traceable>{
-         Box::new((*self).clone())
-     }
-     fn trace(&self, r: &Ray, t_min: f64, t_max: f64) -> TraceResult{
-        if let Some(hit_rec) = self.hit(r, t_min, t_max) {
-            if let Some((attenuation, scattered)) = hit_rec.mat.scatter(r, &hit_rec){
-                TraceResult::Scattered((hit_rec.mat.emit() + attenuation, scattered))
-            } else{
-                TraceResult::Absorbed(hit_rec.mat.emit())
-            }
-        } else{
-            TraceResult::Missed
-        }
-    }
- }
-
-
-impl<'a> HitRecord<'a>{
-    pub fn new(p: Point3, normal: Vec3, t: f64, r: Ray, mat: &'a dyn Scatter, p_err: Vec3) -> HitRecord<'a>{
-        let mut rec = HitRecord{p, normal, t, front_face: true, mat, p_err};
+impl HitRecord{
+    pub fn new(p: Point3, normal: Vec3, t: f64, r: Ray, p_err: Vec3) -> HitRecord{
+        let mut rec = HitRecord{p, normal, t, front_face: true, p_err};
         rec.set_face_normal(&r, &normal);
         rec      
-    }
-
-    pub fn from_mat(mat: &'a dyn Scatter) -> HitRecord<'a>{
-        HitRecord::new(Point3::default(), Vec3::default(), 0.0, Ray::default(), mat, Vec3::default())
     }
 
     pub fn set_face_normal(&mut self, r: &Ray, outward_normal: &Vec3){
@@ -93,44 +69,87 @@ impl<'a> HitRecord<'a>{
 
 impl TraceableList{
 
-    pub fn new() -> TraceableList{
+    pub fn new() -> TraceableList {
         TraceableList{list: Vec::new()}
     } 
     
 
-    pub fn add(&mut self, new_traceable: Box<dyn Traceable>)
-    {
+    pub fn add(&mut self, new_traceable: Primitive) {
         self.list.push(new_traceable);
     }
 
-    pub fn remove(&mut self, index: usize) -> Box<dyn Traceable>{
+    pub fn remove(&mut self, index: usize) -> Primitive {
         self.list.remove(index)
     }
 
-    pub fn get(&self, index: usize) -> &dyn Traceable{
-        &*self.list[index]
+    pub fn get(&self, index: usize) -> Primitive {
+        self.list[index]
     }
 
-    pub fn len(&self) -> usize{
+    pub fn len(&self) -> usize {
         self.list.len()
     }
 
-    pub fn empty(&self) -> bool{
+    pub fn empty(&self) -> bool {
         self.list.len() == 0
     }
 
     pub fn sort_by<F>(&mut self, compare: F)
     where
-        F: FnMut(&Box<dyn Traceable>, &Box<dyn Traceable>) -> Ordering,
+        F: FnMut(&Primitive, &Primitive) -> Ordering,
     {
         self.list.sort_by(compare);
+    }
+
+    pub fn measure_extent(&self, axis_index: usize) -> Option<f64> {
+        
+        if self.len() == 0 {
+            return None
+        }
+        let mut min_val = f64::INFINITY;
+        let mut max_val = f64:: NEG_INFINITY;
+
+        for primitive in &self.list {
+            let bb_option = primitive.bounding_box();
+            match bb_option {
+                None => return None,
+                Some(bb) => {
+                    min_val = min_val.min(bb.centroid()[axis_index]);
+                    max_val = max_val.max(bb.centroid()[axis_index]);
+                }
+            }
+        }
+        Some(max_val - min_val)
+    }
+
+    pub fn get_largest_extent(&self) -> Option<usize>{
+        if self.len() == 0 {
+            return None
+        }
+        let mut largest_index = 1;
+        let mut largest_extent = f64::NEG_INFINITY;
+        for i in 0..3{
+            let extent_option = self.measure_extent(i);
+            match extent_option{
+                None => return None,
+                Some(extent_i) => {
+                    if extent_i > largest_extent {
+                        largest_extent = extent_i;
+                        largest_index = i;
+                    }
+                }
+            }
+          
+        }
+
+        return Some(largest_index)
     }
 
     pub fn split_off(&mut self, at: usize) -> TraceableList{
         TraceableList{list: self.list.split_off(at)}
     }
 
-    pub fn to_Bvh(self) -> BvhNode{
+    pub fn to_Bvh(self) -> BvhNode {
         BvhNode::new(self)
     }
 
@@ -162,8 +181,8 @@ impl TraceableList{
                                                     norms[usize::try_from(face_indices[vertex]*3 + 2).unwrap()].into());
                     }
 
-                    let tri = Triangle::new(tri_vert, tri_norm, Lambertian::new(model_color));
-                    self.add(Box::new(tri));
+                    let tri = Triangle::new(tri_vert, tri_norm, Material::Lambertian(Lambertian::new(model_color)));
+                    self.add(Primitive::Triangle(tri));
                 }
             //}
         }
@@ -171,18 +190,18 @@ impl TraceableList{
 }
 
 impl Hit for TraceableList{
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>{
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<(HitRecord, &Material)> {
         
         let mut closest_so_far = t_max;
-        let mut rec_out = None;
+        let mut hit_out: Option<(HitRecord, &Material)> = None;
 
         for traceable in &self.list{
-            if let Some(rec_temp) = traceable.hit(r, t_min, closest_so_far){
-                rec_out = Some(rec_temp);
-                closest_so_far = rec_temp.t;
+            if let Some(hit_temp) = traceable.hit(r, t_min, closest_so_far){
+                hit_out = Some(hit_temp);
+                closest_so_far = hit_temp.0.t;
             }
         }
-        rec_out
+        hit_out
     }
 
     fn bounding_box(&self) -> Option<Aabb>{
@@ -206,22 +225,23 @@ impl Hit for TraceableList{
     }
 }
 
-impl Clone for Box<dyn Traceable>{
-    fn clone(&self) -> Self {
-        self.box_clone()
-    }
-}
 
-impl Clone for TraceableList{
-    fn clone(&self) -> Self {
-        TraceableList{list: self.list.clone()}
-    }
-}
-
-
-pub trait Hit{
-    fn hit(&self ,r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
+#[enum_dispatch]
+pub trait Hit: Send + Sync{
+    fn hit(&self ,r: &Ray, t_min: f64, t_max: f64) -> Option<(HitRecord, &Material)>;
     fn bounding_box(&self) -> Option<Aabb>;
+
+    fn trace(&self, r: &Ray, t_min: f64, t_max: f64) -> TraceResult{
+        if let Some((hit_rec, mat)) = self.hit(r, t_min, t_max) {
+            if let Some((attenuation, scattered)) = mat.scatter(r, &hit_rec){
+                TraceResult::Scattered((mat.emit() + attenuation, scattered))
+            } else{
+                TraceResult::Absorbed(mat.emit())
+            }
+        } else{
+            TraceResult::Missed
+        }
+    }
 }
 
 
@@ -236,9 +256,9 @@ mod tests {
         let mut list = TraceableList::new();
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
-        let s = Box::new(Sphere::new(center, radius, mat));
-        list.add(s);
+        let mat = Material::Lambertian(Lambertian::default());
+        let s = Sphere::new(center, radius, mat);
+        list.add(Primitive::Sphere(s));
         assert_eq!(list.len(), 1);
      }
 
@@ -247,9 +267,9 @@ mod tests {
         let mut list = TraceableList::new();
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
-        let s = Box::new(Sphere::new(center, radius, mat));
-        list.add(s);
+        let mat = Material::Lambertian(Lambertian::default());
+        let s = Sphere::new(center, radius, mat);
+        list.add(Primitive::Sphere(s));
         list.remove(0);
         assert_eq!(list.len(), 0);
     }
@@ -259,11 +279,11 @@ mod tests {
         let mut list = TraceableList::new();
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
-        let s = Box::new(Sphere::new(center, radius, mat));
+        let mat = Material::Lambertian(Lambertian::default());
+        let s = Primitive::Sphere(Sphere::new(center, radius, mat));
         list.add(s);
 
-        let list_clone = list.clone();
+        let list_clone = list;
         assert_eq!(list_clone.len(), 1);
     }
 
@@ -277,8 +297,8 @@ mod tests {
         //Case 1: No intersections
         let center = Vec3::new(0.0, -10.0, 0.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
-        let s = Box::new(Sphere::new(center, radius, mat));
+        let mat = Material::Lambertian(Lambertian::default());
+        let s = Primitive::Sphere(Sphere::new(center, radius, mat));
         list.add(s);
         let hit = list.hit(&r, t_min, t_max);
         assert!(hit.is_none());
@@ -286,45 +306,71 @@ mod tests {
         //Case 2: One intersection
         let center = Vec3::new(0.0, 0.0, 0.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
-        let s = Box::new(Sphere::new(center, radius, mat));
+        let mat = Material::Lambertian(Lambertian::default());
+        let s = Primitive::Sphere(Sphere::new(center, radius, mat));
         list.add(s);
         let hit = list.hit(&r, t_min, t_max);
         assert!(hit.is_some());
-        let rec = hit.unwrap();
+        let (rec, _) = hit.unwrap();
         assert_eq!(rec.t, 5.0);  
         
         //Case 3: Two intersections
         let center = Vec3::new(-2.0, 0.0, 0.0);
         let radius = 5.0;
-        let mat = Lambertian::default();
-        let s = Box::new(Sphere::new(center, radius, mat));
+        let mat = Material::Lambertian(Lambertian::default());
+        let s = Primitive::Sphere(Sphere::new(center, radius, mat));
         list.add(s);
         let hit = list.hit(&r, t_min, t_max);
         assert!(hit.is_some());
-        let rec = hit.unwrap();
+        let (rec, _) = hit.unwrap();
         assert_eq!(rec.t, 3.0); 
     }
 
     #[test]
     fn test_sort_by(){
         let mut list = TraceableList::new();
-        let t_min = 0.0;
-        let t_max = 100.0;
         for i in 0..101{
             let center = Vec3::new(500.0 - 5.0*(i as f64), 0.0, 0.0);
             let radius = 1.0;
-            let mat = Lambertian::default();
-            let s = Box::new(Sphere::new(center, radius, mat));
+            let mat = Material::Lambertian(Lambertian::default());
+            let s = Primitive::Sphere(Sphere::new(center, radius, mat));
             list.add(s);
         }
-        let r = Ray::new(Vec3::new(0.0, -10.0, 0.0), Vec3::new( 0.0, 1.0, 0.0));
-        let hit = list.hit(&r, t_min, t_max).unwrap();
-        assert_eq!(hit.t, 9.0);
+
         list.sort_by(|a, b| Aabb::box_compare(a, b, 0));
-        list.remove(0);
-        let hit = list.hit(&r, t_min, t_max);
-        assert!(hit.is_none());
+
+        for i in 0..101{
+            match list.get(i) {
+                Primitive::Sphere(sphere) => {
+                    let center = sphere.center();
+                    assert_eq!(sphere.center(), Vec3::new(5.0 * (i as f64), 0.0, 0.0));
+                }
+                _ => panic!()
+            }
+        }
+    }
+
+    #[test]
+    fn test_largest_extent() {
+        let mut list = TraceableList::new();
+        assert!(list.get_largest_extent().is_none());
+
+        //Sphere 1
+        let center = Vec3::new(0.0, 0.0, 0.0);
+        let radius = 5.0;
+        let mat = Material::Lambertian(Lambertian::default());
+        let s = Sphere::new(center, radius, mat);
+        list.add(Primitive::Sphere(s));
+
+        //Sphere 2
+        let center = Vec3::new(-2.0, -10.0, 3.0);
+        let radius = 5.0;
+        let mat = Material::Lambertian(Lambertian::default());
+        let s = Sphere::new(center, radius, mat);
+        list.add(Primitive::Sphere(s));
+
+        assert_eq!(list.get_largest_extent().unwrap(), 1 as usize)
+
     }
 
     // #[test]

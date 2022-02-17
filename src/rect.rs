@@ -12,15 +12,15 @@ pub enum RectAxes{
 }
 
 #[derive (Copy, Clone)]
-pub struct Rect<M> where M: Scatter{
-    mat: M,
+pub struct Rect{
+    mat: Material,
     axes: RectAxes,
     corners: [f64; 4],
     k: f64
 }
 
-impl<M> Rect<M> where M: Scatter{
-    pub fn new(axes: RectAxes, axis1_min: f64, axis1_max: f64, axis2_min: f64, axis2_max: f64, k: f64, mat: M) -> Rect<M>{
+impl Rect {
+    pub fn new(axes: RectAxes, axis1_min: f64, axis1_max: f64, axis2_min: f64, axis2_max: f64, k: f64, mat: Material) -> Rect{
         Rect{axes, corners: [axis1_min, axis1_max, axis2_min, axis2_max], k, mat}
     }   
 
@@ -53,8 +53,8 @@ impl<M> Rect<M> where M: Scatter{
     }
 }
 
-impl<M> Hit for Rect<M> where M: Scatter{
-    fn hit(&self, r:&Ray, t_min: f64, t_max: f64) -> Option<HitRecord>{
+impl Hit for Rect {
+    fn hit(&self, r:&Ray, t_min: f64, t_max: f64) -> Option<(HitRecord, &Material)> {
         let indices = self.axes_indices();
         let unused = self.unused_axis_index();
 
@@ -67,8 +67,8 @@ impl<M> Hit for Rect<M> where M: Scatter{
         if x < self.corner(0) || x > self.corner(1) || y < self.corner(2) || y > self.corner(3){
             return None;
         }
-        let rec = HitRecord::new(r.at(t), self.outward_normal(), t, *r, &self.mat, Vec3::default());
-        Some(rec)
+        let rec = HitRecord::new(r.at(t), self.outward_normal(), t, *r, Vec3::default());
+        Some((rec, &self.mat))
     }
 
     fn bounding_box(&self) -> Option<Aabb>{
@@ -95,14 +95,14 @@ mod tests {
     fn test_hit(){
 
         //XY
-        let diff_light = DiffuseLights::new(Color::new(4.0,4.0,4.0));
+        let diff_light = Material::new_diffuse_light(Color::new(4.0,4.0,4.0));
         let rect = Box::new(Rect::new(RectAxes::XY, 3.0, 5.0, 1.0, 3.0, 0.0, diff_light));
 
         //Case 1: Collision
         let r = Ray::new(Vec3::new(4.0, 2.0, -10.0), Vec3::new( 0.0, 0.0, 1.0));
         let rec_option = rect.hit(&r, 0.0, 100.0);
         assert!(rec_option.is_some());
-        let rec = rec_option.unwrap();
+        let (rec, _) = rec_option.unwrap();
         assert_eq!(rec.t, 10.0);
 
         //Case 2: Miss face of rectangle
@@ -127,7 +127,7 @@ mod tests {
         let r = Ray::new(Vec3::new(4.0, -10.0, 2.0), Vec3::new( 0.0, 1.0, 0.0));
         let rec_option = rect.hit(&r, 0.0, 100.0);
         assert!(rec_option.is_some());
-        let rec = rec_option.unwrap();
+        let (rec, _) = rec_option.unwrap();
         assert_eq!(rec.t, 10.0);
 
         //Case 2: Miss face of rectangle
@@ -152,7 +152,7 @@ mod tests {
         let r = Ray::new(Vec3::new(-10.0, 4.0, 2.0), Vec3::new( 1.0, 0.0, 0.0));
         let rec_option = rect.hit(&r, 0.0, 100.0);
         assert!(rec_option.is_some());
-        let rec = rec_option.unwrap();
+        let (rec, _) = rec_option.unwrap();
         assert_eq!(rec.t, 10.0);
 
         //Case 2: Miss face of rectangle
@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn test_bounding_box(){
         //XY
-        let diff_light = DiffuseLights::new(Color::new(4.0,4.0,4.0));
+        let diff_light = Material::new_diffuse_light(Color::new(4.0,4.0,4.0));
         let rect = Box::new(Rect::new(RectAxes::XY, -5.0, -3.0, 1.0, 3.0, 0.0, diff_light));
         let bb = rect.bounding_box();
         assert!(bb.is_some());

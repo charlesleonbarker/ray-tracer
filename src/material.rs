@@ -26,8 +26,54 @@ pub struct DiffuseLights{
 }
 
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum Material{
+    Lambertian(Lambertian),
+    Metal(Metal),
+    Dielectric(Dielectric),
+    DiffuseLights(DiffuseLights)
+}
+
+impl Scatter for Material {
+    fn scatter(&self, r : &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
+        match *self {
+            Material::Lambertian(material) => material.scatter(r, rec),
+            Material::Metal(material) => material.scatter(r, rec),
+            Material::Dielectric(material) => material.scatter(r, rec),
+            Material::DiffuseLights(material) => material.scatter(r, rec)
+        }
+    }
+
+    fn emit(&self) -> Color {
+        match *self {
+            Material::Lambertian(material) => material.emit(),
+            Material::Metal(material) => material.emit(),
+            Material::Dielectric(material) => material.emit(),
+            Material::DiffuseLights(material) => material.emit()
+        }
+    }
+}
+
+impl Material {
+    pub fn new_lambertian(alb: Color) -> Material {
+        Material::Lambertian(Lambertian::new(alb))
+    }
+
+    pub fn new_metal(alb:Vec3, mut fuzz: f64) -> Material {
+        Material::Metal(Metal::new(alb, fuzz))
+    }
+
+    pub fn new_dielectric(ir: f64) -> Material{
+        Material::Dielectric(Dielectric::new(ir))
+    }
+
+    pub fn new_diffuse_light(color: Color) -> Material{
+        Material::DiffuseLights(DiffuseLights::new(color))
+    }
+}
+
 impl Lambertian{
-    pub fn new(alb: Color) -> Lambertian{
+    pub fn new(alb: Color) -> Lambertian {
         Lambertian{albedo: alb}
     }
 
@@ -44,7 +90,7 @@ impl Lambertian{
     }
 }
 
-impl Scatter for Lambertian{
+impl Scatter for Lambertian {
     fn scatter(&self, _: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>{
 
         let reflect_dir = Vec3::rand_unit_vec();
@@ -53,8 +99,8 @@ impl Scatter for Lambertian{
     }
 }
 
-impl Metal{
-    pub fn new(alb:Vec3, mut fuzz: f64) -> Metal{
+impl Metal {
+    pub fn new(alb:Vec3, mut fuzz: f64) -> Metal {
         if fuzz > 1.0 {fuzz = 1.0}
         else if fuzz < 0.0 {fuzz = 0.0}
         Metal{albedo: alb, fuzz}
@@ -72,14 +118,14 @@ impl Metal{
     }
 }
 
-impl Scatter for Metal{
+impl Scatter for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>{
         let fuzz_dir = Vec3::rand_in_unit_sphere();
         self.deterministic_scatter(r_in, rec, fuzz_dir)
     }
 }
 
-impl Dielectric{
+impl Dielectric {
     pub fn new(ir: f64) -> Dielectric{
         Dielectric{index_of_refraction: ir}
     }
@@ -114,7 +160,7 @@ impl Dielectric{
     }
 }
 
-impl Scatter for Dielectric{
+impl Scatter for Dielectric {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>{
         let rand = rand_double(0.0, 1.0);
         self.deterministic_scatter(r_in, rec, rand)
@@ -138,9 +184,7 @@ impl Scatter for DiffuseLights{
 
 }
 
-
-
-pub trait Scatter{
+pub trait Scatter: Clone{
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
     fn emit(&self) -> Color{
         Color::new(0.0, 0.0, 0.0)
@@ -150,20 +194,21 @@ pub trait Scatter{
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sphere::*;
+    use crate::{sphere::*, primitive::Primitive};
 
     #[test]
     fn test_lambertian_deterministic_scatter(){
 
         //Initialisation
         let albedo = Color::new(0.7, 0.6, 0.5);
-        let mat = Lambertian::new(albedo);
-        let s = Box::new(Sphere::new(Point3::new(1.0,0.0,0.0), 1.0, mat));
+        let mat = Material::new_lambertian(albedo);
+        let s = Primitive::new_sphere(Point3::new(1.0,0.0,0.0), 1.0, mat);
         let r = Ray::new(Point3::new(-10.0, -10.0, 0.0), Vec3::new( 1.0, 1.0, 0.0));
         let hit = s.hit(&r, 0.0, 100.0);
-        let rec = hit.unwrap();
+        let (rec, _) = hit.unwrap();
         
         //Case 1: Scatter direction is non-degenerate
+        let mat = Lambertian::new(albedo);
         let scatter_result = mat.deterministic_scatter(&rec, Vec3::new(-1.0, 0.0, 0.0));
         assert!(scatter_result.is_some());
         let (color, reflected_ray) = scatter_result.unwrap();
@@ -192,13 +237,14 @@ mod tests {
 
         //Initialisation
         let albedo = Color::new(0.7, 0.6, 0.5);
-        let mat = Metal::new(albedo, 20.0);
-        let s = Box::new(Sphere::new(Point3::new(1.0,0.0,0.0), 1.0, mat));
+        let mat = Material::new_metal(albedo, 20.0);
+        let s = Primitive::new_sphere(Point3::new(1.0,0.0,0.0), 1.0, mat);
         let r = Ray::new(Point3::new(-10.0, -10.0, 0.0), Vec3::new( 1.0, 1.0, 0.0));
         let hit = s.hit(&r, 0.0, 100.0);
-        let rec = hit.unwrap();
+        let (rec, _) = hit.unwrap();
         
         //Case 1: Ray reflects
+        let mat = Metal::new(albedo, 20.0);
         let scatter_result = mat.deterministic_scatter(&r, &rec, Vec3::new(0.0, 0.0, 0.0));
         assert!(scatter_result.is_some());
         let (color, reflected_ray) = scatter_result.unwrap();
@@ -222,11 +268,11 @@ mod tests {
 
     #[test]
     fn test_diffuse_light_scatter(){
-        let mat = DiffuseLights::new(Color::new(0.7, 0.6, 0.5));
-        let s = Box::new(Sphere::new(Point3::new(1.0,0.0,0.0), 1.0, mat));
+        let mat = Material::new_diffuse_light(Color::new(0.7, 0.6, 0.5));
+        let s = Primitive::new_sphere(Point3::new(1.0,0.0,0.0), 1.0, mat);
         let r = Ray::new(Point3::new(-10.0, -10.0, 0.0), Vec3::new( 1.0, 1.0, 0.0));
         let hit = s.hit(&r, 0.0, 100.0);
-        let rec = hit.unwrap();
+        let (rec, _) = hit.unwrap();
 
         let scatter_result = mat.scatter(&r, &rec);
         assert!(scatter_result.is_none());
