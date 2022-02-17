@@ -5,6 +5,13 @@ extern crate fastrand;
 extern crate tobj;
 extern crate num_cpus;
 extern crate enum_dispatch;
+extern crate imgui;
+extern crate glium;
+extern crate imgui_glium_renderer;
+extern crate imgui_winit_support;
+extern crate image;
+extern crate clipboard;
+
 
 mod vec;
 mod ray;
@@ -19,6 +26,7 @@ mod triangle;
 mod scenes;
 mod primitive;
 mod bounding_box;
+mod gui;
 
 use crate::vec::*;
 use crate::ray::*;
@@ -70,7 +78,7 @@ fn main(){
 
     //Image
     let aspect_ratio = 3.0/2.0;
-    let image_width = 400;
+    let image_width = 800;
     let image_height=  ((image_width as f64)/aspect_ratio) as i32;
     let samples_per_pixel = 500;
     let max_depth=  50;
