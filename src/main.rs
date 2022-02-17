@@ -36,6 +36,17 @@ use crate::util::*;
 use crate::material::*;
 use crate::bounding_box::*;
 use crate::enum_dispatch::*;
+use crate::gui::*;
+use crate::custom_textures::*;
+use crate::support::*;
+use crate::glium::*;
+
+use glium::{
+    backend::Facade,
+    texture::{ClientFormat, RawImage2d},
+    uniforms::{MagnifySamplerFilter, MinifySamplerFilter, SamplerBehavior},
+    Texture2d,
+};
 
 use std::f64::INFINITY;
 use std::fs::File;
@@ -71,6 +82,14 @@ pub struct SharedData{
 }
 
 fn main(){
+
+    let mut my_app = CustomTexturesApp::default();
+
+    let mut system = support::init(file!());
+    my_app
+        .register_textures(system.display.get_context(), system.renderer.textures())
+        .expect("Failed to register textures");
+    system.main_loop(move |_, ui| my_app.show_textures(ui));
 
     //Scene
     let (world, background, look_from, look_at) = scenes::obj_test();

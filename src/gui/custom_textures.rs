@@ -13,10 +13,10 @@ use image::{jpeg::JpegDecoder, ImageDecoder};
 use imgui::*;
 use imgui_glium_renderer::Texture;
 
-mod support;
+use super::support;
 
 #[derive(Default)]
-struct CustomTexturesApp {
+pub struct CustomTexturesApp {
     my_texture_id: Option<TextureId>,
     lenna: Option<Lenna>,
 }
@@ -27,7 +27,7 @@ struct Lenna {
 }
 
 impl CustomTexturesApp {
-    fn register_textures<F>(
+    pub fn register_textures<F>(
         &mut self,
         gl_ctx: &F,
         textures: &mut Textures<Texture>,
@@ -77,15 +77,15 @@ impl CustomTexturesApp {
         Ok(())
     }
 
-    fn show_textures(&self, ui: &Ui) {
-        ui.window("Hello textures")
-            .size([400.0, 400.0], Condition::FirstUseEver)
-            .build(|| {
-                ui.text("Hello textures!");
-                if let Some(my_texture_id) = self.my_texture_id {
-                    ui.text("Some generated texture");
-                    Image::new(my_texture_id, [100.0, 100.0]).build(ui);
-                }
+    pub fn show_textures(&self, ui: &Ui) {
+        Window::new("Hello textures")
+        .size([400.0, 400.0], Condition::FirstUseEver)
+        .build(ui, || {
+            ui.text("Hello textures!");
+            if let Some(my_texture_id) = self.my_texture_id {
+                ui.text("Some generated texture");
+                Image::new(my_texture_id, [100.0, 100.0]).build(ui);
+}
 
                 if let Some(lenna) = &self.lenna {
                     ui.text("Say hello to Lenna.jpg");
